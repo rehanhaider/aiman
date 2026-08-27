@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+coproc CODEX { codex app-server 2>/dev/null; }
+
+cleanup() {
+    [ -n "${CODEX_PID:-}" ] && kill "$CODEX_PID" 2>/dev/null
+}
+trap cleanup EXIT
+
+send() {
+    printf '%s\n' "$1" >&"${CODEX[1]}"
+}
+
+# 1. Initialize
+send '{"method":"initialize","id":1,"params":{"clientInfo":{"name":"codex-status","version":"1.0"}}}'
+
+# Wait for initialize response
+while IFS= read -r -u "${CODEX[0]}" line; do
+    jq -e '.id == 1' >/dev/null 2>&1 <<<"$line" && break
+done
+
+# 2. Acknowledge initialization
+send '{"method":"initialized"}'
+
+# 3. Ask Codex for our actual ChatGPT rate limits
+send '{"method":"account/rateLimits/read","id":2}'
+
+while IFS= read -r -u "${CODEX[0]}" line; do
+    if jq -e '.id == 2' >/dev/null 2>&1 <<<"$line"; then
+        jq -r '
+          (.result.rateLimitsByLimitId.codex // .result.rateLimits) as $r |
+
+          [$r.primary, $r.secondary]
+          | map(select(. != null))
+          | .[]
+          |
+          (
+            if .windowDurationMins == 300 then "5h"
+            elif .windowDurationMins == 10080 then "Weekly"
+            else "\(.windowDurationMins)m"
+            end
+          ) as $name
+          |
+          "\($name): \(100 - .usedPercent)% left  ·  resets \(
+             if .resetsAt then
+               (.resetsAt | localtime | strftime("%a %H:%M"))
+             else
+               "unknown"
+             end
+          )"
+        ' <<<"$line"
+        break
+    fi
+done
+

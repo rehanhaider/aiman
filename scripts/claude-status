@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -o pipefail
+
+# Interactive mode: refresh every 5 minutes
+if [[ "${1:-}" == "-i" ]]; then
+    exec watch -n 300 -- "$0"
+fi
+
+# Reject unknown arguments
+if [[ $# -gt 0 ]]; then
+    echo "Usage: claude-status [-i]"
+    echo "  -i    Refresh usage every 5 minutes"
+    exit 1
+fi
+
+claude -p "/usage" |
+    sed -n '/^Current session:/p;/^Current week/p'
+
