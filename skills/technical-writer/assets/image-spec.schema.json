@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rehan-haider/skills/technical-writer/image-spec.schema.json",
+  "title": "Technical Article Image Specification",
+  "description": "Tool-agnostic specification for generating images (hero, illustration, section opener) for technical articles. Produced by the technical-writer skill in Visuals mode; consumed by image generators (DALL-E, Midjourney, Imagen, Stable Diffusion) or pasted into Claude / ChatGPT / Gemini for image generation.",
+  "type": "object",
+  "required": [
+    "purpose",
+    "context",
+    "subject",
+    "style",
+    "color_palette",
+    "aspect_ratio",
+    "include",
+    "exclude",
+    "mood",
+    "alt_text",
+    "tools_supported"
+  ],
+  "properties": {
+    "purpose": {
+      "type": "string",
+      "description": "What this image is for in the article. e.g. 'Hero image for blog post titled X', 'Section opener for the Y section'.",
+      "minLength": 10
+    },
+    "context": {
+      "type": "string",
+      "description": "One sentence on the article's topic so the generator understands the surrounding piece.",
+      "minLength": 10
+    },
+    "subject": {
+      "type": "string",
+      "description": "The literal thing in the frame. Concrete, not metaphorical. e.g. 'An isometric illustration of two parallel pipelines'.",
+      "minLength": 10
+    },
+    "style": {
+      "type": "string",
+      "description": "Art-direction descriptor. e.g. 'minimal isometric tech illustration', 'editorial watercolor', 'soft pastel illustration'.",
+      "minLength": 5
+    },
+    "color_palette": {
+      "type": "array",
+      "description": "Hex color codes the generator should respect. 2–6 colors typical.",
+      "items": {
+        "type": "string",
+        "pattern": "^#[0-9A-Fa-f]{3,8}$"
+      },
+      "minItems": 2,
+      "maxItems": 8
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "description": "Image aspect ratio. Common values: 16:9 (hero / OG card), 4:3, 3:2, 1:1, 3:1 (narrow band).",
+      "examples": ["16:9", "4:3", "1:1", "3:2", "3:1"]
+    },
+    "include": {
+      "type": "array",
+      "description": "Specific elements that must be in the image.",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "exclude": {
+      "type": "array",
+      "description": "Elements to keep out of the image. Almost always includes 'text', 'logos', 'watermarks'.",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "mood": {
+      "type": "string",
+      "description": "One or two adjectives describing the emotional tone. e.g. 'calm, technical', 'investigative, slightly wry', 'energetic, precise'.",
+      "minLength": 3
+    },
+    "alt_text": {
+      "type": "string",
+      "description": "Accessibility description for the rendered image. Present-tense, describes what's shown rather than what it represents. ≤125 characters preferred.",
+      "minLength": 10,
+      "maxLength": 250
+    },
+    "tools_supported": {
+      "type": "array",
+      "description": "Which generators this spec has been tested on or is expected to work with.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "DALL-E 3",
+          "DALL-E 2",
+          "Midjourney",
+          "Midjourney v6",
+          "Imagen",
+          "Imagen 3",
+          "Stable Diffusion XL",
+          "Stable Diffusion 3",
+          "Flux",
+          "Ideogram",
+          "Adobe Firefly"
+        ]
+      },
+      "minItems": 1
+    },
+    "lighting": {
+      "type": "string",
+      "description": "Optional: lighting direction / quality. e.g. 'soft natural', 'dramatic side-light', 'studio flat'."
+    },
+    "perspective": {
+      "type": "string",
+      "description": "Optional: viewpoint. e.g. 'isometric 30-degree', 'front-facing', 'aerial', 'three-quarter'."
+    },
+    "composition": {
+      "type": "string",
+      "description": "Optional: how elements arrange in the frame. e.g. 'rule of thirds', 'centered subject', 'two horizontal bands'."
+    },
+    "negative_prompt": {
+      "type": "string",
+      "description": "Optional: explicit negative prompt for Stable Diffusion / Flux. Often subsumed by 'exclude' for other tools."
+    },
+    "seed": {
+      "type": "integer",
+      "description": "Optional: reproducibility seed. Useful for iterating on a single composition."
+    },
+    "reference_images": {
+      "type": "array",
+      "description": "Optional: URLs or local paths to images the generator should use as visual references.",
+      "items": { "type": "string" }
+    },
+    "iteration_notes": {
+      "type": "string",
+      "description": "What to tweak if the first generation doesn't land. Concrete adjustments tied to specific elements of the spec."
+    },
+    "platform_hints": {
+      "type": "object",
+      "description": "Optional: tool-specific overrides if the spec needs to render differently per generator.",
+      "properties": {
+        "dalle": { "type": "string" },
+        "midjourney": { "type": "string" },
+        "imagen": { "type": "string" },
+        "stable_diffusion": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "purpose": "Hero image (lede + OG card) for a blog post titled 'Why caching at the agent harness beats caching at the model'",
+      "context": "Technical deep-dive on agent infrastructure latency. The argument is that the harness layer is a better cache boundary than the model API.",
+      "subject": "An isometric illustration of two parallel pipelines, one labelled 'harness' with a glowing cache layer, one labelled 'model' without. The harness pipeline has clearly faster particle flow.",
+      "style": "minimal isometric tech illustration, clean line art with selective gradient fills",
+      "color_palette": ["#0a7ea4", "#f1faee", "#1d3557", "#e63946"],
+      "aspect_ratio": "16:9",
+      "include": ["two parallel pipeline rows", "labelled cache layer with glow", "particle/data flow", "monospace labels"],
+      "exclude": ["text-heavy diagrams", "stock-photo people", "literal robot or brain imagery", "watermarks"],
+      "mood": "calm, technical, confident",
+      "alt_text": "Isometric illustration comparing two pipelines, with the cached harness pipeline showing faster data flow than the uncached model pipeline.",
+      "tools_supported": ["DALL-E 3", "Midjourney v6", "Imagen 3", "Stable Diffusion XL"],
+      "lighting": "soft, diffuse, low-contrast",
+      "perspective": "30-degree isometric",
+      "composition": "two horizontal bands, harness on top",
+      "iteration_notes": "If the cache layer doesn't read as a 'box', swap for a glowing torus shape. If particle flow looks like rain, switch to a directional gradient streak."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+<svg role="img" aria-labelledby="title-error-state" viewBox="0 0 240 180" xmlns="http://www.w3.org/2000/svg" width="240" height="180">
+  <title id="title-error-state">Non-fatal error</title>
+  <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="120" cy="90" r="44" />
+    <line x1="88" y1="58" x2="152" y2="122" />
+  </g>
+  <g fill="currentColor" opacity="0.12">
+    <ellipse cx="120" cy="158" rx="50" ry="6" />
+  </g>
+</svg>

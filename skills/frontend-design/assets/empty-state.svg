@@ -1,0 +1,13 @@
+<svg role="img" aria-labelledby="title-empty-state" viewBox="0 0 240 180" xmlns="http://www.w3.org/2000/svg" width="240" height="180">
+  <title id="title-empty-state">Empty tray</title>
+  <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="48" y="56" width="144" height="96" rx="8" />
+    <path d="M48 96 L96 96 L108 112 L132 112 L144 96 L192 96" />
+    <line x1="84" y1="40" x2="84" y2="56" />
+    <line x1="120" y1="32" x2="120" y2="56" />
+    <line x1="156" y1="40" x2="156" y2="56" />
+  </g>
+  <g fill="currentColor" opacity="0.12">
+    <ellipse cx="120" cy="164" rx="56" ry="6" />
+  </g>
+</svg>

@@ -1,0 +1,41 @@
+{
+  "purpose": "Hero illustration for a finance close-cycle landing page.",
+  "surface": "Hero block, top of fold, paired with primary CTA 'Start free trial'.",
+  "subject": "A calm finance lead reviewing a clean dashboard on a laptop, with three small neat stacks of paper placed to the side.",
+  "scene": "A modern, daylit home office with one houseplant and a coffee mug.",
+  "style": {
+    "medium": "flat illustration",
+    "mood": "calm, confident, focused",
+    "lighting": "soft daylight from the left",
+    "framing": "medium"
+  },
+  "palette": {
+    "primary": "#0E1E40",
+    "secondary": "#E8F0FF",
+    "accent": "#5B8DEF",
+    "background": "#F7F8FB"
+  },
+  "composition": {
+    "aspect_ratio": "16:9",
+    "negative_space": "right",
+    "focal_point": "The laptop screen, glowing softly."
+  },
+  "include": [
+    "A laptop with a stylised dashboard chart.",
+    "Three small neat stacks of paper.",
+    "One coffee mug and one houseplant."
+  ],
+  "exclude": [
+    "Photoreal faces",
+    "brand logos",
+    "text inside the image",
+    "watermarks",
+    "currency symbols",
+    "ringing phones"
+  ],
+  "accessibility": {
+    "alt_text": "A finance lead reviewing a dashboard on a laptop, with neat stacks of paper beside them.",
+    "contrast_target": "WCAG AA against the hero background."
+  },
+  "notes": "Brand voice is calm-expert. Skip stressed body language, clutter, or red tones that read as alarm."
+}

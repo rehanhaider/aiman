@@ -1,0 +1,482 @@
+{
+ "note": "Findings posted to real PRs and accepted by the owner. Recall corpus for the pr-review skill; see README.md.",
+ "sources": [
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39
+  },
+  {
+   "repo": "Mizanic/Qaleening",
+   "pr": 50
+  },
+  {
+   "repo": "rehanhaider/naqid",
+   "pr": 31
+  }
+ ],
+ "count": 42,
+ "findings": [
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "be65e781ceea7147d7043901a0fb071db503180b",
+   "path": "api/src/auth.ts",
+   "line": 194,
+   "severity": "P2",
+   "reviewer": "pr-review",
+   "title": "Only remember an unknown kid after the refetch succeeds",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3649971889"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "0bf0af847c8af65f6000ef319be95b616b857963",
+   "path": "api/src/auth.ts",
+   "line": 204,
+   "severity": "P1",
+   "reviewer": "codex",
+   "title": "Retry a rotated kid after a stale JWKS response",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3650431407"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "041e279a381f22cffeae0076b770d39063c02778",
+   "path": "api/src/auth.ts",
+   "line": 213,
+   "severity": "P2",
+   "reviewer": "codex",
+   "title": "Use per-kid JWKS refetch cooldown",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3647915115"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "0bf0af847c8af65f6000ef319be95b616b857963",
+   "path": "api/src/auth.ts",
+   "line": 213,
+   "severity": "P2",
+   "reviewer": "codex",
+   "title": "Share the in-flight JWKS rotation refresh",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3650431404"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "193ee4ecda7de460bcef0788dd4275779b9c27e5",
+   "path": "api/src/auth.ts",
+   "line": 246,
+   "severity": "P1",
+   "reviewer": "codex",
+   "title": "Bound the shared JWKS refresh lifetime",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3650606517"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "0bf0af847c8af65f6000ef319be95b616b857963",
+   "path": "mobile/app.json",
+   "line": 46,
+   "severity": "P1",
+   "reviewer": "codex",
+   "title": "Validate the native storage change on a rebuilt client",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3650431401"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "041e279a381f22cffeae0076b770d39063c02778",
+   "path": "mobile/src/auth/provider.ts",
+   "line": 310,
+   "severity": "P1",
+   "reviewer": "codex",
+   "title": "Reject revoked access tokens at the API",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3647915119"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "be65e781ceea7147d7043901a0fb071db503180b",
+   "path": "mobile/src/lib/__tests__/persisted-store-encryption.test.ts",
+   "line": 83,
+   "severity": "P3",
+   "reviewer": "pr-review",
+   "title": "Cover the plaintext-to-encrypted upgrade this case names",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3649971897"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "041e279a381f22cffeae0076b770d39063c02778",
+   "path": "mobile/src/lib/persisted-store.ts",
+   "line": 39,
+   "severity": "P1",
+   "reviewer": "codex",
+   "title": "Avoid falling back to plaintext MMKV writes",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3647915112"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "041e279a381f22cffeae0076b770d39063c02778",
+   "path": "mobile/src/lib/persisted-store.ts",
+   "line": 49,
+   "severity": "P2",
+   "reviewer": "codex",
+   "title": "Preserve encrypted stores missing the canary",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3647915133"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "be65e781ceea7147d7043901a0fb071db503180b",
+   "path": "mobile/src/lib/persisted-store.ts",
+   "line": 72,
+   "severity": "P3",
+   "reviewer": "pr-review",
+   "title": "Guard the created path against a launch-time throw",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3649971896"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "be65e781ceea7147d7043901a0fb071db503180b",
+   "path": "mobile/src/lib/persisted-store.ts",
+   "line": 89,
+   "severity": "P2",
+   "reviewer": "pr-review",
+   "title": "Interrupted-migration recovery cannot reopen the store unkeyed",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3649971892"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "0bf0af847c8af65f6000ef319be95b616b857963",
+   "path": "mobile/src/lib/persisted-store.ts",
+   "line": 117,
+   "severity": "P2",
+   "reviewer": "codex",
+   "title": "Mark unreadable existing sessions during volatile startup",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3650431403"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "0bf0af847c8af65f6000ef319be95b616b857963",
+   "path": "mobile/src/lib/persisted-store.ts",
+   "line": 119,
+   "severity": "P2",
+   "reviewer": "codex",
+   "title": "Preserve storage for the Expo web target",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3650431410"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "193ee4ecda7de460bcef0788dd4275779b9c27e5",
+   "path": "mobile/src/lib/persisted-store.ts",
+   "line": 148,
+   "severity": "P2",
+   "reviewer": "codex",
+   "title": "Mark legacy stores during volatile upgrade launches",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3650606508"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "46fd8d46ec228a1b38b6df1d4d1c9c17d10c3082",
+   "path": "mobile/src/lib/persisted-store.ts",
+   "line": 185,
+   "severity": "P3",
+   "reviewer": "pr-review",
+   "title": "Cover the FE-19 owner-switch wipe, not just clearPersisted",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3650009224"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "9272601754ee1b5c6209649b4753b76680d91d83",
+   "path": "mobile/src/lib/persisted-store.ts",
+   "line": 270,
+   "severity": "P4",
+   "reviewer": "pr-review",
+   "title": "Check the marker store exists before opening it",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3650361538"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "193ee4ecda7de460bcef0788dd4275779b9c27e5",
+   "path": "mobile/src/lib/persisted-store.ts",
+   "line": 276,
+   "severity": "P2",
+   "reviewer": "codex",
+   "title": "Fail closed when the unverified-use marker cannot be consumed",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3650606513"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "be65e781ceea7147d7043901a0fb071db503180b",
+   "path": "mobile/src/lib/persisted-store.ts",
+   "line": 285,
+   "severity": "P2",
+   "reviewer": "pr-review",
+   "title": "Wipe the on-disk store too when running memory-only",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3649971895"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "1621dab47830f7d1cd16b407e49c61788b7e1ae8",
+   "path": "mobile/src/store/auth.ts",
+   "line": 241,
+   "severity": "P2",
+   "reviewer": "pr-review",
+   "title": "Account for the local-only slices this drop destroys",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3650237417"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "9272601754ee1b5c6209649b4753b76680d91d83",
+   "path": "mobile/src/store/auth.ts",
+   "line": 259,
+   "severity": "P3",
+   "reviewer": "pr-review",
+   "title": "Consume the unverified-use note before the no-session return",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3650361537"
+  },
+  {
+   "repo": "Magnolia-Impact/navinier-app",
+   "pr": 39,
+   "sha": "041e279a381f22cffeae0076b770d39063c02778",
+   "path": "mobile/src/store/auth.ts",
+   "line": 295,
+   "severity": "P2",
+   "reviewer": "codex",
+   "title": "Don't skip revoke on transient refresh failures",
+   "url": "https://github.com/Magnolia-Impact/navinier-app/pull/39#discussion_r3647915123"
+  },
+  {
+   "repo": "Mizanic/Qaleening",
+   "pr": 50,
+   "sha": "30f989699769b584067fc891a9e15989e729ec49",
+   "path": "aws/src/Api.ts",
+   "line": 165,
+   "severity": "P2",
+   "reviewer": "pr-review",
+   "title": "Shorten the access-token lifetime or revoke on group change",
+   "url": "https://github.com/Mizanic/Qaleening/pull/50#discussion_r3650525039"
+  },
+  {
+   "repo": "Mizanic/Qaleening",
+   "pr": 50,
+   "sha": "68875d40a9748abb32605a18d99a9bd7daf877dc",
+   "path": "aws/src/fn/api/app.ts",
+   "line": 43,
+   "severity": "P2",
+   "reviewer": "codex",
+   "title": "Exempt health at API Gateway, not only in Hono",
+   "url": "https://github.com/Mizanic/Qaleening/pull/50#discussion_r3650416143"
+  },
+  {
+   "repo": "Mizanic/Qaleening",
+   "pr": 50,
+   "sha": "30f989699769b584067fc891a9e15989e729ec49",
+   "path": "aws/src/fn/api/app.ts",
+   "line": 66,
+   "severity": "P2",
+   "reviewer": "pr-review",
+   "title": "Handle the zod issues array in onError so validation 400s keep their field details",
+   "url": "https://github.com/Mizanic/Qaleening/pull/50#discussion_r3650525032"
+  },
+  {
+   "repo": "Mizanic/Qaleening",
+   "pr": 50,
+   "sha": "68875d40a9748abb32605a18d99a9bd7daf877dc",
+   "path": "aws/src/fn/api/lib/guards.ts",
+   "line": 46,
+   "severity": "P1",
+   "reviewer": "codex",
+   "title": "Give authorization failures stable error codes",
+   "url": "https://github.com/Mizanic/Qaleening/pull/50#discussion_r3650416139"
+  },
+  {
+   "repo": "Mizanic/Qaleening",
+   "pr": 50,
+   "sha": "68875d40a9748abb32605a18d99a9bd7daf877dc",
+   "path": "aws/src/fn/api/lib/guards.ts",
+   "line": 77,
+   "severity": "P1",
+   "reviewer": "codex",
+   "title": "Validate mosque IDs before authorization lookups",
+   "url": "https://github.com/Mizanic/Qaleening/pull/50#discussion_r3650416151"
+  },
+  {
+   "repo": "Mizanic/Qaleening",
+   "pr": 50,
+   "sha": "30f989699769b584067fc891a9e15989e729ec49",
+   "path": "aws/src/fn/api/lib/guards.ts",
+   "line": 87,
+   "severity": "P2",
+   "reviewer": "pr-review",
+   "title": "Resolve the mosque id from the matched route, not the middleware's own path",
+   "url": "https://github.com/Mizanic/Qaleening/pull/50#discussion_r3650525038"
+  },
+  {
+   "repo": "Mizanic/Qaleening",
+   "pr": 50,
+   "sha": "68875d40a9748abb32605a18d99a9bd7daf877dc",
+   "path": "aws/src/fn/api/lib/principal.ts",
+   "line": 41,
+   "severity": "P1",
+   "reviewer": "codex",
+   "title": "Update the authoritative principal contract",
+   "url": "https://github.com/Mizanic/Qaleening/pull/50#discussion_r3650416148"
+  },
+  {
+   "repo": "Mizanic/Qaleening",
+   "pr": 50,
+   "sha": "c3929fa2c7be95e7d797951f4de04dacb928a821",
+   "path": "aws/src/fn/api/lib/principal.ts",
+   "line": 110,
+   "severity": "P3",
+   "reviewer": "pr-review",
+   "title": "Paginate spocOf or narrow its documented contract to one page",
+   "url": "https://github.com/Mizanic/Qaleening/pull/50#discussion_r3650391375"
+  },
+  {
+   "repo": "Mizanic/Qaleening",
+   "pr": 50,
+   "sha": "30f989699769b584067fc891a9e15989e729ec49",
+   "path": "specs/architecture.md",
+   "line": 92,
+   "severity": "P3",
+   "reviewer": "pr-review",
+   "title": "Update the principal contract in AGENTS.md alongside architecture.md",
+   "url": "https://github.com/Mizanic/Qaleening/pull/50#discussion_r3650525043"
+  },
+  {
+   "repo": "rehanhaider/naqid",
+   "pr": 31,
+   "sha": "039058e2abd0d1f84faeb8909fe643df6ed0f4be",
+   "path": "docs/issues/control-plane/CP-013-hosted-scope-delivery-and-executor-local-state.md",
+   "line": 120,
+   "severity": "P1",
+   "reviewer": "codex",
+   "title": "Wire delivered previews through the hosted connector",
+   "url": "https://github.com/rehanhaider/naqid/pull/31#discussion_r3650470712"
+  },
+  {
+   "repo": "rehanhaider/naqid",
+   "pr": 31,
+   "sha": "ea8198dc5d5754c3f4abf2824a5ef6cb7fd169c5",
+   "path": "docs/issues/control-plane/CP-013-hosted-scope-delivery-and-executor-local-state.md",
+   "line": 141,
+   "severity": "P2",
+   "reviewer": "codex",
+   "title": "Document that delivered previews use no trust directory",
+   "url": "https://github.com/rehanhaider/naqid/pull/31#discussion_r3650606268"
+  },
+  {
+   "repo": "rehanhaider/naqid",
+   "pr": 31,
+   "sha": "45a9b75f554a9b4fa35d2b74825d4aaa1053345b",
+   "path": "executor/packages/cli/src/daemon-action-supervisor.ts",
+   "line": 163,
+   "severity": "P1",
+   "reviewer": "codex",
+   "title": "Index scope-delivered journals for restart recovery",
+   "url": "https://github.com/rehanhaider/naqid/pull/31#discussion_r3650376776"
+  },
+  {
+   "repo": "rehanhaider/naqid",
+   "pr": 31,
+   "sha": "45a9b75f554a9b4fa35d2b74825d4aaa1053345b",
+   "path": "executor/packages/cli/src/daemon-action-supervisor.ts",
+   "line": 201,
+   "severity": "P1",
+   "reviewer": "codex",
+   "title": "Keep delivered workspace IDs out of trust paths",
+   "url": "https://github.com/rehanhaider/naqid/pull/31#discussion_r3650376777"
+  },
+  {
+   "repo": "rehanhaider/naqid",
+   "pr": 31,
+   "sha": "039058e2abd0d1f84faeb8909fe643df6ed0f4be",
+   "path": "executor/packages/cli/src/daemon-action-supervisor.ts",
+   "line": 206,
+   "severity": "P1",
+   "reviewer": "codex",
+   "title": "Separate delivered trust paths from named workspaces",
+   "url": "https://github.com/rehanhaider/naqid/pull/31#discussion_r3650470716"
+  },
+  {
+   "repo": "rehanhaider/naqid",
+   "pr": 31,
+   "sha": "039058e2abd0d1f84faeb8909fe643df6ed0f4be",
+   "path": "executor/packages/cli/src/daemon-action-supervisor.ts",
+   "line": 233,
+   "severity": "P2",
+   "reviewer": "codex",
+   "title": "Release stacks created for delivered previews",
+   "url": "https://github.com/rehanhaider/naqid/pull/31#discussion_r3650470714"
+  },
+  {
+   "repo": "rehanhaider/naqid",
+   "pr": 31,
+   "sha": "45a9b75f554a9b4fa35d2b74825d4aaa1053345b",
+   "path": "executor/packages/cli/src/daemon-action-supervisor.ts",
+   "line": 234,
+   "severity": "P2",
+   "reviewer": "codex",
+   "title": "Release stacks created only for delivered previews",
+   "url": "https://github.com/rehanhaider/naqid/pull/31#discussion_r3650376778"
+  },
+  {
+   "repo": "rehanhaider/naqid",
+   "pr": 31,
+   "sha": "45a9b75f554a9b4fa35d2b74825d4aaa1053345b",
+   "path": "executor/packages/cli/src/daemon-action-supervisor.ts",
+   "line": 253,
+   "severity": "P1",
+   "reviewer": "codex",
+   "title": "Retain access to scope-delivered recovery stacks",
+   "url": "https://github.com/rehanhaider/naqid/pull/31#discussion_r3650376772"
+  },
+  {
+   "repo": "rehanhaider/naqid",
+   "pr": 31,
+   "sha": "ea8198dc5d5754c3f4abf2824a5ef6cb7fd169c5",
+   "path": "executor/packages/cli/src/daemon-action-supervisor.ts",
+   "line": 816,
+   "severity": "P2",
+   "reviewer": "codex",
+   "title": "Probe the shared preview stack in hosted health checks",
+   "url": "https://github.com/rehanhaider/naqid/pull/31#discussion_r3650606269"
+  },
+  {
+   "repo": "rehanhaider/naqid",
+   "pr": 31,
+   "sha": "45a9b75f554a9b4fa35d2b74825d4aaa1053345b",
+   "path": "executor/packages/schema/src/action-submission.ts",
+   "line": 24,
+   "severity": "P1",
+   "reviewer": "codex",
+   "title": "Validate submission scope keys before parsing",
+   "url": "https://github.com/rehanhaider/naqid/pull/31#discussion_r3650376774"
+  },
+  {
+   "repo": "rehanhaider/naqid",
+   "pr": 31,
+   "sha": "039058e2abd0d1f84faeb8909fe643df6ed0f4be",
+   "path": "executor/packages/schema/src/scope.ts",
+   "line": 142,
+   "severity": "P2",
+   "reviewer": "codex",
+   "title": "Preserve the delivered scope shape in JSON Schema",
+   "url": "https://github.com/rehanhaider/naqid/pull/31#discussion_r3650470713"
+  }
+ ]
+}

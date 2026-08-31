@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web App"
+  short_description: "Build polished TanStack web products"
+  default_prompt: "Use $webapp to build a polished public and product web application in the Mizanic/emcp house system."

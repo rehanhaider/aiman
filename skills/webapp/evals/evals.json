@@ -1,0 +1,57 @@
+{
+  "skill_name": "webapp",
+  "evals": [
+    {
+      "id": 0,
+      "name": "homelab-tracker",
+      "prompt": "Build a small web app to track homelab servers. Each server has a name, IP address, role, status, and notes. I need a searchable/filterable list, create/edit flow, and detail route. Persist locally for now. Dark and light mode, pnpm, and verify typecheck/build.",
+      "expected_output": "A working TanStack Start product UI with file routes, Query-owned repository data, URL filters, one Zustand UI store, official shadcn components configured for Base UI, bundled Geist fonts, and the compact emcp product scale.",
+      "files": [],
+      "assertions": [
+        "Typecheck and production build pass",
+        "Uses TanStack Start, Router, Query, Zustand, Tailwind v4, official shadcn/ui configured with the Base UI option, and strict TypeScript",
+        "Has a committed components.json and installs primitives through the shadcn CLI rather than maintaining hand-written Base UI lookalikes",
+        "Uses a single focused Zustand UI store rather than separate stores for sidebar, theme, and other persistent UI preferences",
+        "Uses data-theme with a pre-paint theme script and bundled Geist font packages",
+        "Default product controls are about 32px high and the page frame uses responsive 16px to 24px padding",
+        "Search/filter/page state lives in Router search params and feeds Query keys",
+        "Status uses semantic tone helpers rather than raw palette classes",
+        "List, detail, empty, loading, and error states exist"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "newsletter-admin",
+      "prompt": "Build an admin console for a newsletter. Sidebar destinations: Subscribers, Campaigns, Settings. Subscribers needs search, sorting, row selection, status filters, and server-style pagination over about 80 mock rows. Campaigns is a compact list. Settings is a validated sender profile form. Dark/light mode, pnpm, typecheck and build.",
+      "expected_output": "An emcp-shaped admin console with a persistent sidebar shell, TanStack Table for the subscriber grid, TanStack Form for validated settings, Query data, Router search state, and Zustand UI state.",
+      "files": [],
+      "assertions": [
+        "Typecheck and production build pass",
+        "Uses TanStack Table for sorting, selection, and pagination",
+        "Uses TanStack Form or an equally explicit schema-backed form flow for the multi-field validated settings form",
+        "Uses official shadcn registry components configured for Base UI with semantic tokens and no Radix dependency",
+        "Application code imports components from components/ui and does not import @base-ui/react directly",
+        "Shell uses a 48px top bar, responsive page padding, compact 32px desktop controls, and mobile-sized touch targets",
+        "Subscriber filters and pagination are represented in the URL",
+        "Loading rows, empty results, query error, mutation pending, and destructive confirmation states are present"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "public-plus-admin-news-product",
+      "prompt": "Create a web product for a short-news reader. It needs a public homepage with app screenshots, benefits, topics, trust/privacy copy and store/download CTAs; public Latest and Top routes; and an authenticated /app admin console with source management. Use one design system and one TanStack Start app. The public page should feel premium and spacious, while the admin remains efficient. Use pnpm and verify typecheck, tests, and build.",
+      "expected_output": "A single TanStack Start application that clearly separates Mizanic/emcp public scale from emcp product scale while sharing tokens, fonts, primitives, data ownership, and build infrastructure.",
+      "files": [],
+      "assertions": [
+        "Public routes are separate from the guarded /app product layout and eligible public routes are prerendered",
+        "Public container is max-w-6xl or max-w-7xl with px-5/sm:px-6/lg:px-8 rather than a site-wide max-w-5xl wrapper",
+        "Hero primary CTA is 48px and secondary public CTA is at least 40px; neither reuses the 36px product lg size",
+        "Major public sections use roughly 80px to 96px vertical rhythm and responsive display typography",
+        "Public composition uses real product screenshots or purposeful visuals and avoids a page made only of repeated icon-card grids",
+        "Product routes retain compact emcp controls, top bar, sidebar, tables, and page frame",
+        "Both surfaces use the same semantic tokens, bundled Geist fonts, official shadcn components configured for Base UI, Query, Router, and Zustand ownership",
+        "Any public gradient or texture is restrained and token-derived; product controls and cards remain flat"
+      ]
+    }
+  ]
+}

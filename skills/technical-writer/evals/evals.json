@@ -1,0 +1,72 @@
+{
+  "skill_name": "technical-writer",
+  "evals": [
+    {
+      "id": 0,
+      "name": "discovery-outline",
+      "prompt": "i've been building a custom auth system for our b2b saas (~3k prod accounts, employee-managed orgs) for about 3 months. started on auth0, hit hard rate limits and a weird edge case on the org-switching flow where session JWTs would get out of sync, briefly tried clerk but their pricing tier didn't make sense for our shape (we have a lot of low-revenue orgs with high seat count), finally landed on lucia v3 + postgres + redis for sessions. been wanting to write about it but i don't know what the angle is. probably 2000-3000 words on https://eng.acme-co.dev. help me find the kernel and outline it.",
+      "expected_output": "A discovery + outline response: kernel statement, 1-3 angle options, structured outline with H2s, SEO/GEO/AEO checkpoints annotated, and at least one section explicitly on what didn't work.",
+      "assertions": [
+        "Response opens by stating which mode it is operating in (Discovery, Outline, or both)",
+        "Identifies a specific narrative kernel that references at least 2 concrete details from the user's prompt",
+        "Offers at least 2 distinct angle options for the article",
+        "Provides an outline with at least 5 H2-level sections",
+        "Outline includes at least one section explicitly devoted to what didn't work (auth0 limits / clerk pricing mismatch)",
+        "Outline includes a direct-answer paragraph slot near the top",
+        "Outline includes a FAQ section near the end with question-phrased H3s",
+        "Outline references SEO/GEO/AEO scaffolding",
+        "Performs an authenticity check",
+        "Lists open questions or details the user still needs to resolve before drafting",
+        "Does not write polished prose for the article body"
+      ],
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "optimize-draft",
+      "prompt": "here's a draft i wrote — can you optimize it for SEO, GEO, and AEO? we're publishing on our company blog (https://api-co.dev/blog) and i want it to actually rank and get cited by AI search engines. the topic is migrating from REST to GraphQL.\n\ndraft starts here:\n---\n# Why We Moved to GraphQL\n\nWe migrated our API from REST to GraphQL in Q3. Here's why and how.\n\n## The Problem\n\nOur REST API had a lot of endpoints. Customers were complaining about over-fetching. We had multiple endpoints for similar things.\n\n## The Solution\n\nWe adopted Apollo Server. We wrote schemas. We migrated endpoints over a few months.\n\n## Results\n\nThings are better now. Latency is down. Customer feedback has been positive.\n\n## Conclusion\n\nGraphQL is great. We recommend it.\n---\nend of draft. tell me what's wrong and rewrite the structure to fix it. i can fill in the prose myself.",
+      "expected_output": "An audit/optimize response with: in-line annotations identifying problems, an annotated rewrite of the structure (not full prose), scores for SEO/GEO/AEO, and a top-3 priority fix list.",
+      "assertions": [
+        "Response opens by stating which mode it is operating in",
+        "Identifies that the draft has no direct-answer paragraph at the top and recommends adding one",
+        "Identifies the title 'Why We Moved to GraphQL' as generic / lacking the kernel",
+        "Flags the absence of any section on what didn't work / approaches that failed",
+        "Flags the absence of outbound authoritative citations",
+        "Flags the absence of a FAQ section",
+        "Mentions schema markup that should be emitted",
+        "Provides numeric scores for SEO, GEO, and AEO dimensions",
+        "Provides a prioritized fix list",
+        "Recommends question-phrased H2s where natural",
+        "Recommends specific original-data inclusions",
+        "Provides a rewritten outline structure (not full prose)",
+        "Does not insert AI prose into the draft"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "visuals",
+      "prompt": "writing a deep-dive about how we built a real-time collaboration feature for our document editor using CRDTs (specifically yjs). need two visuals:\n\n1. a hero image for the article — something visually interesting that captures 'real-time collaboration with conflict resolution', not literal screenshots\n2. an architecture diagram showing 4-5 connected clients <-> websocket server <-> postgres for snapshots, with the yjs awareness protocol shown somehow\n\nwhat should i do for each? give me the actual SVG for the diagram, and a JSON spec for the hero so i can hand it to dall-e or midjourney.",
+      "expected_output": "Two visuals: (1) JSON image spec for hero with all required fields, (2) inline SVG for architecture with <title>/<desc> and text labels.",
+      "assertions": [
+        "Response opens by stating which mode it is operating in (Visuals)",
+        "Produces a JSON image specification for the hero image",
+        "Hero JSON spec includes purpose, context, subject, style, color_palette, aspect_ratio, include, exclude, mood, alt_text, tools_supported",
+        "Hero JSON spec's color_palette is an array of hex codes",
+        "Hero JSON spec's exclude list contains text/logos/watermarks",
+        "Hero JSON spec is saved as a separate file at hero-spec.json",
+        "Produces inline SVG markup for the architecture diagram",
+        "SVG includes a <title> element",
+        "SVG includes a <desc> element",
+        "SVG uses <text> elements for labels (not paths)",
+        "SVG visually shows at least 4 client elements",
+        "SVG visually shows a websocket server element",
+        "SVG visually shows postgres / database element",
+        "SVG indicates the yjs awareness protocol",
+        "Architecture SVG is saved as a separate file at architecture.svg",
+        "Response explains the SVG-vs-JSON decision"
+      ],
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "skill_name": "pr-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Review the current branch and post comments on the open PR",
+      "expected_output": "Runs pr_review.py gather with no target, reviews the contract and applicable failure modes, writes only demonstrated introduced defects to findings.json, audits every candidate against the P1 gate, dry-runs, posts because posting was explicit, and cleans up. The top-level GitHub body contains only the reviewed SHA and severity counts.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Run a PR review on https://github.com/rehanhaider/naqid/pull/8 — focus on whether the eslint boundary rules have gaps",
+      "expected_output": "Gathers from the URL (no local clone needed), reviews eslint.config.js and related tests for claim gaps (import forms, entry points), dry-runs, and posts the GitHub review with correct severity tags",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "/pr-review agent/cp-006-hosted-daemon-composition",
+      "expected_output": "Gathers using the branch name; reads code from the detached worktree gather created without switching the user's checkout; completes the structured review without modifying code; runs cleanup at the end",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Review this PR again — I pushed some fixes since your last review",
+      "expected_output": "Reads threads.json, skips duplicates of unresolved threads, and re-raises a resolved issue only if it remains at the new SHA. Does not recap resolved threads, passing checks, old findings, or checked-and-fine reasoning in the review summary.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Review PR 42 but don't post anything yet — show me what you'd post first",
+      "expected_output": "Gathers and reviews normally, writes findings.json, runs pr_review.py post with --dry-run only, and presents the rendered summary and comments in chat without posting to GitHub",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Review this auth PR. The new email fallback lookup no longer includes organizationId, so users in different organizations can share an email.",
+      "expected_output": "Traces the fallback from a supported request, recognizes practical cross-tenant record exposure as P1 rather than P2/P3, anchors the finding on the changed predicate, and asks for organization scope to be restored.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "Review this subscription patch. A timestamp stored in milliseconds is now compared with an API value in seconds on every active subscription.",
+      "expected_output": "Checks the unit contract and affected call path. If the mismatch makes the normal subscription flow grant or revoke access incorrectly, classifies the demonstrated core-flow defect as P1 even if the fix is one line and tests currently pass.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "Review this small refactor. The implementation appears correct, but there is no new unit test for one private helper.",
+      "expected_output": "Does not invent a finding for missing tests alone. Reports it only if tracing reveals a concrete regression path or a test falsely claims coverage of a broken contract.",
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "Review PR 57",
+      "expected_output": "If no demonstrated issues are found, writes an empty findings.json, dry-runs it, then posts a GitHub review using the exact format `Reviewed [short SHA] — no new issues found.` The clean result is not left only in chat. Posting is skipped only if the user explicitly requested no posting or a preview.",
+      "files": []
+    }
+  ]
+}

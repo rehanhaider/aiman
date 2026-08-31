@@ -1,0 +1,14 @@
+<svg role="img" aria-labelledby="title-welcome-state" viewBox="0 0 240 180" xmlns="http://www.w3.org/2000/svg" width="240" height="180">
+  <title id="title-welcome-state">Welcome</title>
+  <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M40 110 C72 78, 104 142, 136 110 S 200 78, 200 110" />
+    <path d="M40 130 C72 98, 104 162, 136 130 S 200 98, 200 130" opacity="0.6" />
+    <circle cx="168" cy="62" r="10" />
+    <line x1="168" y1="38" x2="168" y2="48" />
+    <line x1="184" y1="62" x2="194" y2="62" />
+    <line x1="180" y1="50" x2="186" y2="44" />
+  </g>
+  <g fill="currentColor" opacity="0.12">
+    <ellipse cx="120" cy="158" rx="60" ry="6" />
+  </g>
+</svg>
