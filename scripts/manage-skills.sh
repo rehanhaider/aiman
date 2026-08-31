@@ -13,10 +13,12 @@ usage() {
     echo "  $0 install <name|number>    # symlink one skill into the target repo"
     echo "  $0 install-all              # symlink every skill"
     echo "  $0 uninstall <name>         # remove a skill symlink"
-    echo "  $0 doctor                   # validate the library (skills-doctor.py)"
+    echo "  $0 doctor                   # validate the library (same as pnpm check)"
     echo ""
-    echo "Skills come from $REPO_ROOT/skills and are linked into the current"
-    echo "directory's .agents/skills. Override with SKILLS_SOURCE_DIR / SKILLS_TARGET_DIR."
+    echo "Links skills into the current directory's .agents/skills, which is where"
+    echo "Codex and Cursor look. Claude Code installs from the plugin marketplace"
+    echo "instead: claude plugin install <skill>@aiman [--scope project]."
+    echo "Override paths with SKILLS_SOURCE_DIR / SKILLS_TARGET_DIR."
 }
 
 SORTED_SKILLS=()
@@ -111,7 +113,7 @@ uninstall_skill() {
 }
 
 run_doctor() {
-    python3 "$SCRIPT_DIR/skills-doctor.py" "$SOURCE_DIR"
+    node "$SCRIPT_DIR/skills.ts" check
 }
 
 link_skill_to_target() {

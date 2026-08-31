@@ -6,18 +6,24 @@ Agent skills for Claude Code / Cursor / Codex-style assistants. Each skill is a 
 
 ## Usage
 
-Run the manager from the repo root, or from inside the project you want to install into:
+**Claude Code** installs these from the plugin marketplace this repo publishes:
+
+```bash
+claude plugin marketplace add rehanhaider/aiman
+claude plugin install hallmark@aiman [--scope project]
+```
+
+**Codex and Cursor** read `.agents/skills/`, so symlink them instead:
 
 ```bash
 scripts/manage-skills.sh list                  # list all skills
-scripts/manage-skills.sh install hallmark      # symlink one skill into ./.agents/skills
+scripts/manage-skills.sh install hallmark      # symlink into ./.agents/skills
 scripts/manage-skills.sh install-all
 scripts/manage-skills.sh uninstall hallmark
-scripts/manage-skills.sh doctor                # validate the whole library
 ```
 
-Skills are read from this directory and linked into `$PWD/.agents/skills`.
-`SKILLS_SOURCE_DIR` / `SKILLS_TARGET_DIR` override either side.
+`SKILLS_SOURCE_DIR` / `SKILLS_TARGET_DIR` override either side. See the
+[repo README](../README.md) for updates, versioning, and the global `~/.agents/skills` setup.
 
 ## Catalog
 
@@ -66,6 +72,7 @@ Skills are read from this directory and linked into `$PWD/.agents/skills`.
 - Frontmatter `name` must match the directory name; `description` stays under 1024 characters
   and says *when to use* the skill, not just what it is.
 - Deep material goes in `references/` (loaded on demand), not in `SKILL.md`.
-- Every relative link and `references/...` path must resolve — `scripts/manage-skills.sh doctor`
-  enforces this; run it before committing.
+- Every relative link and `references/...` path must resolve — `pnpm check` enforces this,
+  along with the registry and this catalog; run it before committing.
 - Evals live in the skill's own `evals/` directory; retired guides live in `.archive/`.
+- A new skill needs a `pnpm sync` to enter the registry; it starts at version `0.1.0`.

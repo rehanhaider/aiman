@@ -9,3 +9,6 @@ __pycache__/
 # Editors and OS
 .DS_Store
 *.swp
+
+# Node
+node_modules/

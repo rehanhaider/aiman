@@ -1,0 +1,116 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
+  "name": "aiman",
+  "description": "Rehan Haider's skill library for Claude Code, Codex, and Cursor.",
+  "owner": {
+    "name": "Rehan Haider",
+    "url": "https://github.com/rehanhaider"
+  },
+  "plugins": [
+    {
+      "name": "browser-extension-builder",
+      "source": "./skills/browser-extension-builder",
+      "description": "Use when building browser extensions - Chrome, Firefox, or cross-browser. Covers Manifest V3 architecture, content scripts, service workers, popup and side panel UIs, permissions strategy, storage, messaging, monetization, and Chrome Web Store publishing.",
+      "version": "0.1.0",
+      "category": "frontend"
+    },
+    {
+      "name": "frontend-design",
+      "source": "./skills/frontend-design",
+      "description": "Build production-grade frontend interfaces using Astro 6, React 19 islands, Tailwind CSS v4, and DaisyUI v5. Enforce strict theming (semantic tokens only, light/dark, anti-flash) and islands discipline, and apply design craft progressively via mode-based layers (Baseline, Design, Advanced) chosen by UI type. Also produces accompanying visuals: inline SVG state illustrations (empty, error, success, welcome) and JSON image-prompts for hero and marketing artwork. Default to Baseline when unsure. Use when the project runs on (or targets) this Astro + DaisyUI stack; for aesthetic-first standalone page builds with no stack constraint, prefer the hallmark skill.",
+      "version": "0.1.0",
+      "category": "frontend"
+    },
+    {
+      "name": "grill-me",
+      "source": "./skills/grill-me",
+      "description": "Interview the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree. Use when user wants to stress-test a plan, get grilled on their design, or mentions \"grill me\".",
+      "version": "0.1.0",
+      "category": "productivity"
+    },
+    {
+      "name": "hallmark",
+      "source": "./skills/hallmark",
+      "description": "Anti-AI-slop design skill for greenfield pages, audits, redesigns, and design extraction from URLs or screenshots. Use when the user asks to build a new app or landing page, wants to redesign something, invokes Hallmark by name, or uses audit/redesign/study. For UI work inside an established Astro + DaisyUI design system, prefer the frontend-design skill instead.",
+      "version": "1.0.0",
+      "category": "frontend"
+    },
+    {
+      "name": "pr-review",
+      "source": "./skills/pr-review",
+      "description": "Review a GitHub pull request, branch, or open changes for concrete defects introduced by the change; prioritize findings by user and system impact; and post a concise GitHub review outcome, including when no issues are found. Use when the user asks for a PR review, branch review, code review of open changes, prioritized findings, posted review comments, or invokes \"/pr-review\".",
+      "version": "0.1.0",
+      "category": "productivity"
+    },
+    {
+      "name": "react-expert",
+      "source": "./skills/react-expert",
+      "description": "Use when building React 18/19 applications in .jsx or .tsx files, Next.js App Router projects, or Vite setups. Creates components, implements custom hooks, debugs rendering issues, migrates class components to functional, and implements state management. Invoke for Server Components, Suspense boundaries, useActionState forms, React Compiler adoption, performance optimization, or React 19 features.",
+      "version": "0.1.0",
+      "category": "frontend"
+    },
+    {
+      "name": "react-native",
+      "source": "./skills/react-native",
+      "description": "Builds, optimizes, and debugs cross-platform mobile applications with React Native and Expo. Implements Expo Router navigation, configures native modules, optimizes lists, and handles platform-specific code for iOS and Android. Use when building a React Native or Expo mobile app, setting up navigation, integrating native modules, improving scroll performance, handling SafeArea or keyboard input, or configuring Expo SDK projects. Carries calibrated defaults for an Expo SDK 54 / Expo Router 6 / NativeWind stack and verifies the actual project before applying them.",
+      "version": "0.1.0",
+      "category": "frontend"
+    },
+    {
+      "name": "seo-expert",
+      "source": "./skills/seo-expert",
+      "description": "SEO improvement, recovery, and audit skill for existing sites — plus GEO (AI-search optimization for Perplexity, ChatGPT Search, Gemini), AEO (snippets/voice), and keyword analysis. Modes: IMPROVE (default — ground truth from the codebase and Search Console, prioritized fix backlog, shipped with regression tests), RECOVER (traffic drops, deindexing, migration damage), AUDIT (scored SEO/GEO/AEO report), plus direct implementation of named techniques from a 30-entry playbook (meta tags, schema markup, sitemaps, redirects, llms.txt, OG images, Core Web Vitals). Use when the user wants to improve SEO, fix rankings, diagnose a traffic drop, recover from a migration, audit a site, check AI search readiness, or target keywords.",
+      "version": "0.1.0",
+      "category": "writing"
+    },
+    {
+      "name": "ship-issue",
+      "source": "./skills/ship-issue",
+      "description": "Take a tracked issue from wherever it lives — Linear, GitHub Issues, or an in-repo document — through implementation, a pull request, and a self-driving review-and-rectify loop, stopping at a verified ready-to-merge state without merging. Use when the user asks to ship, land, or implement an issue end to end, to shepherd or babysit a pull request through review, to keep resolving review comments until a PR is clean, or invokes \"/ship-issue\".",
+      "version": "0.1.0",
+      "category": "productivity"
+    },
+    {
+      "name": "svg-animations",
+      "source": "./skills/svg-animations",
+      "description": "Create beautiful, performant SVG animations and illustrations. Use this skill when the user asks to create SVG graphics, icons, illustrations, animated logos, path animations, morphing shapes, loading spinners, or any animated SVG content. Covers SMIL animations, CSS-driven SVG animation, path drawing effects, shape morphing, motion paths, gradients, masks, and filters.",
+      "version": "0.1.0",
+      "category": "frontend"
+    },
+    {
+      "name": "technical-writer",
+      "source": "./skills/technical-writer",
+      "description": "Produce high-impact technical articles using the \"Sewing and Reaping\" methodology — authentic engineering exploration first, then narrative — with built-in SEO, GEO (AI search), and AEO (snippets/voice) scaffolding. Generates SVG diagrams inline or a JSON image spec for an image generator. Use when the user wants to write a technical blog post, engineering essay, case study, deep-dive, tutorial, postmortem, or launch announcement; to draft, outline, structure, optimize, audit, or review an article for a technical audience; to find the narrative kernel or angle in work they've built; to add diagrams or hero images to technical content; or to rewrite AI-sounding text so it reads like a real engineer wrote it (de-AI a draft, remove AI tells, humanize prose). Writes in a practical walkthrough voice with a hard ban list of AI tells. Trigger on \"help me write about X\", \"draft a blog post\", \"write a tutorial\", \"find the story in this work\", \"make this rank on AI search\", \"this sounds like AI\", or \"review my draft\".",
+      "version": "0.1.0",
+      "category": "writing"
+    },
+    {
+      "name": "terraform-expert",
+      "source": "./skills/terraform-expert",
+      "description": "Generate, review, refactor, test, and troubleshoot Terraform using official HashiCorp workflows. Use when writing HCL, designing reusable modules, creating `.tftest.hcl` tests, managing backends and state, or importing existing resources.",
+      "version": "0.1.0",
+      "category": "infrastructure"
+    },
+    {
+      "name": "unslop",
+      "source": "./skills/unslop",
+      "description": "Cut AI tells from any writing. Must always apply.",
+      "version": "0.1.0",
+      "category": "writing"
+    },
+    {
+      "name": "ux-copy",
+      "source": "./skills/ux-copy",
+      "description": "Write or audit interface copy that earns attention and moves users. Use for microcopy, buttons, errors, empty states, dialogs, tooltips, onboarding, system status, form labels, menu items, dashboard widgets, settings, and headings on product pages, dashboards, and marketing surfaces. Trigger eagerly on \"what should this button say\", \"review this copy\", \"write copy for [screen, error, dialog, toast]\", anything that names a UI element, brand voice audits, fixes for amateur-sounding text, and any screenshot or wireframe with copy on it. Default on whenever the work is shipping inside a product or marketing surface.",
+      "version": "0.1.0",
+      "category": "writing"
+    },
+    {
+      "name": "webapp",
+      "source": "./skills/webapp",
+      "description": "Build or redesign production web applications, SaaS products, dashboards, admin consoles, internal tools, and their public marketing pages using the Mizanic/emcp house system: TanStack Start + file-based Router + Query, TanStack Table/Form when the problem needs them, Zustand for client UI state, Tailwind CSS v4, and official shadcn/ui components configured with the Base UI option. Use for new web apps, app scaffolds, product shells, CRUD/table/form work, public-plus-authenticated products, or when an existing result feels cramped, generic, inconsistently spaced, or visually below the reference quality. Not for React Native or an existing non-TanStack frontend unless the user asks to migrate it.",
+      "version": "0.1.0",
+      "category": "frontend"
+    }
+  ]
+}
