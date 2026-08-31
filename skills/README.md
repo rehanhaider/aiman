@@ -6,24 +6,22 @@ Agent skills for Claude Code / Cursor / Codex-style assistants. Each skill is a 
 
 ## Usage
 
-**Claude Code** installs these from the plugin marketplace this repo publishes:
+Link the library into the directories Claude Code, Codex, and Cursor read:
+
+```bash
+pnpm link-skills                 # all skills, globally
+pnpm link-skills hallmark        # just one
+pnpm link-skills --project       # into this repo instead of the home directory
+```
+
+Or install a pinned version from the plugin marketplace this repo publishes:
 
 ```bash
 claude plugin marketplace add rehanhaider/aiman
 claude plugin install hallmark@aiman [--scope project]
 ```
 
-**Codex and Cursor** read `.agents/skills/`, so symlink them instead:
-
-```bash
-scripts/manage-skills.sh list                  # list all skills
-scripts/manage-skills.sh install hallmark      # symlink into ./.agents/skills
-scripts/manage-skills.sh install-all
-scripts/manage-skills.sh uninstall hallmark
-```
-
-`SKILLS_SOURCE_DIR` / `SKILLS_TARGET_DIR` override either side. See the
-[repo README](../README.md) for updates, versioning, and the global `~/.agents/skills` setup.
+See the [repo README](../README.md) for the difference, updates, and versioning.
 
 ## Catalog
 

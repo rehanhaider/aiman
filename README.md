@@ -3,8 +3,9 @@
 Central store for my AI tooling: the skill library, the agent instruction files I run
 globally, the analysis behind them, and the helper scripts.
 
-This repo is also a **Claude Code plugin marketplace** — every skill is published as a
-single-skill plugin, so skills are installed and versioned rather than symlinked by hand.
+Skills install two ways: symlinked into the agent directories with `pnpm link-skills`
+(simple, always current), or from the **Claude Code plugin marketplace** this repo
+publishes, when a project wants a pinned version.
 
 ## Layout
 
@@ -12,12 +13,32 @@ single-skill plugin, so skills are installed and versioned rather than symlinked
 | --- | --- |
 | `skills/` | The skill library — one directory per skill, each with a `SKILL.md`. See [skills/README.md](skills/README.md) for the catalog and conventions. |
 | `.claude-plugin/marketplace.json` | The registry: one entry per skill, with its version. Generated from `skills/` by `pnpm sync` — don't hand-edit names, sources, or descriptions. |
-| `scripts/` | `skills.ts` (validate + registry), `manage-skills.sh` (Codex/Cursor symlinks), and the usage-check scripts under `claude/` and `codex/`. |
+| `scripts/` | `skills.ts` — validate, registry, install — and the usage-check scripts under `claude/` and `codex/`. |
 | `snapshots/` | The instruction files as deployed — `snapshots/claude/CLAUDE.md` (`~/.claude/CLAUDE.md`) and `snapshots/codex/AGENTS.md` (`~/.codex/AGENTS.md`). |
 | `analysis/` | Working notes the instruction files came out of, e.g. the per-model failure analyses in `analysis/AGENTS/`. |
 
-## Install skills into Claude Code
+## Install every skill globally
 
+One command links the library into the directories the agents read — Claude Code's
+`~/.claude/skills`, and `~/.agents/skills` for Codex and Cursor:
+
+```bash
+pnpm link-skills                 # all skills, both directories
+pnpm link-skills forge hallmark  # just these
+pnpm unlink-skills forge         # remove
+```
+
+They are symlinks into `skills/`, so an edit here is live everywhere on the next
+session — no reinstall, no version bump. Add `--project` to link into the current
+repo's `.claude/skills` and `.agents/skills` instead of the home directory.
+
+Existing links pointing somewhere else are repointed; a real directory is never
+overwritten, it is reported and skipped. `unlink-skills` only removes symlinks that
+point into this library.
+
+## Install as a Claude Code plugin instead
+
+Use this when a project should pin a version rather than track the working copy.
 Add the marketplace once per machine, then install what you want:
 
 ```bash
@@ -43,17 +64,8 @@ After that Claude Code refreshes the catalog and updates installed skills in the
 shortly after each session starts, then prompts for `/reload-plugins`. Without it, update on
 demand with `claude plugin marketplace update aiman` and `claude plugin update <skill>@aiman`.
 
-## Install skills into Codex or Cursor
-
-Both read `.agents/skills/` in the project and `~/.agents/skills/` globally, so one symlink
-covers everything, with `git pull` as the update path:
-
-```bash
-ln -s ~/Projects/aiman/skills ~/.agents/skills          # global
-./scripts/manage-skills.sh install hallmark             # or per project
-```
-
-Claude Code does not read `.agents/skills`; it uses the marketplace above.
+Codex and Cursor have no plugin equivalent — `pnpm link-skills` is their only path.
+Claude Code does not read `.agents/skills`, which is why the linker writes both.
 
 ## Working on the library
 
@@ -61,6 +73,7 @@ Claude Code does not read `.agents/skills`; it uses the marketplace above.
 pnpm check                      # validate skills, registry, and catalog
 pnpm sync                       # refresh the registry after adding or renaming a skill
 pnpm release <skill> [patch|minor|major]
+pnpm link-skills / unlink-skills
 ```
 
 `pnpm check` runs the library rules (frontmatter, description limit, link and path

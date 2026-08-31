@@ -5,11 +5,25 @@
 //   node scripts/skills.ts check              validate library + registry
 //   node scripts/skills.ts sync               rewrite the registry from skills/
 //   node scripts/skills.ts release <s> <lvl>  bump a skill's version
+//   node scripts/skills.ts link [names...]    symlink skills into the agent dirs
+//   node scripts/skills.ts unlink [names...]  remove those symlinks
 //
 // Stdlib only. Node >= 22.6 runs this file directly (native type stripping).
 
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -281,6 +295,88 @@ function release(name: string, level = "patch"): number {
   return 0;
 }
 
+// Where each tool looks for loose skill directories. Claude Code reads only its
+// own path; Codex and Cursor both read .agents/skills.
+function targets(global: boolean): { label: string; dir: string }[] {
+  const root = global ? homedir() : process.cwd();
+  return [
+    { label: "claude", dir: join(root, ".claude", "skills") },
+    { label: "codex/cursor", dir: join(root, ".agents", "skills") },
+  ];
+}
+
+function selectSkills(names: string[]): Skill[] | null {
+  const skills = readSkills();
+  if (names.length === 0) return skills;
+  const chosen: Skill[] = [];
+  for (const name of names) {
+    const skill = skills.find((s) => s.name === name);
+    if (!skill) {
+      console.error(`No skill named '${name}'.`);
+      return null;
+    }
+    chosen.push(skill);
+  }
+  return chosen;
+}
+
+function link(names: string[], global: boolean): number {
+  const skills = selectSkills(names);
+  if (!skills) return 1;
+  let failed = 0;
+
+  for (const { label, dir } of targets(global)) {
+    mkdirSync(dir, { recursive: true });
+    console.log(`${label}: ${dir}`);
+    for (const skill of skills) {
+      const target = join(dir, skill.name);
+      if (existsSync(target) && !lstatSync(target).isSymbolicLink()) {
+        console.log(`  SKIP     ${skill.name} — a real directory is already there`);
+        failed++;
+        continue;
+      }
+      if (lstatSync(target, { throwIfNoEntry: false })?.isSymbolicLink()) {
+        const current = readlinkSync(target);
+        if (realpathSync(target) === skill.dir) {
+          console.log(`  ok       ${skill.name}`);
+          continue;
+        }
+        rmSync(target);
+        symlinkSync(skill.dir, target);
+        console.log(`  repoint  ${skill.name} (was ${current})`);
+        continue;
+      }
+      symlinkSync(skill.dir, target);
+      console.log(`  link     ${skill.name}`);
+    }
+  }
+  if (failed) console.log(`\n${failed} skipped — move or delete the real directory, then re-run.`);
+  return failed ? 1 : 0;
+}
+
+function unlink(names: string[], global: boolean): number {
+  const skills = selectSkills(names);
+  if (!skills) return 1;
+
+  for (const { label, dir } of targets(global)) {
+    if (!existsSync(dir)) continue;
+    console.log(`${label}: ${dir}`);
+    for (const skill of skills) {
+      const target = join(dir, skill.name);
+      const stat = lstatSync(target, { throwIfNoEntry: false });
+      if (!stat) continue;
+      // Only ever remove a symlink this library owns.
+      if (!stat.isSymbolicLink() || realpathSync(target) !== skill.dir) {
+        console.log(`  SKIP     ${skill.name} — not a link into this library`);
+        continue;
+      }
+      rmSync(target);
+      console.log(`  removed  ${skill.name}`);
+    }
+  }
+  return 0;
+}
+
 const [command = "check", ...rest] = process.argv.slice(2);
 switch (command) {
   case "check":
@@ -294,7 +390,16 @@ switch (command) {
       process.exit(1);
     }
     process.exit(release(rest[0], rest[1]));
+  case "link":
+  case "unlink": {
+    const names = rest.filter((a) => !a.startsWith("--"));
+    // Global by default: these skills are meant to be available everywhere.
+    const global = !rest.includes("--project");
+    process.exit(command === "link" ? link(names, global) : unlink(names, global));
+  }
   default:
-    console.error(`Unknown command '${command}'. Use: check | sync | release <skill> [level]`);
+    console.error(
+      `Unknown command '${command}'. Use: check | sync | release <skill> [level] | link [names...] | unlink [names...]`,
+    );
     process.exit(1);
 }

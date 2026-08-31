@@ -1,7 +1,7 @@
 # Archive
 
 Retired or superseded guides kept for reference. Nothing in this directory is an active skill:
-the manager script and `pnpm check` ignore it, and nothing in the live library links here.
+`pnpm check` and the installer ignore it, and nothing in the live library links here.
 
 | File | Why it's archived |
 | --- | --- |

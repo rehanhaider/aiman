@@ -11,6 +11,8 @@
   "scripts": {
     "check": "node scripts/skills.ts check",
     "sync": "node scripts/skills.ts sync",
-    "release": "node scripts/skills.ts release"
+    "release": "node scripts/skills.ts release",
+    "link-skills": "node scripts/skills.ts link",
+    "unlink-skills": "node scripts/skills.ts unlink"
   }
 }
