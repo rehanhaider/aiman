@@ -448,7 +448,7 @@ which one did:
 ```
 
 The `rehanhaider/pr-review-skill` part is load-bearing, not branding:
-`ship-issue`'s watcher refuses to call a pull request clean unless the review
+`forge`'s watcher refuses to call a pull request clean unless the review
 body contains that exact string, so a `--signed-by` value that replaces it
 instead of extending it leaves an automated loop stuck forever on a PR that is
 actually fine. Add the model as a suffix; never substitute it. Omitting

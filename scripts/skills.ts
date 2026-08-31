@@ -22,6 +22,7 @@ const DESC_LIMIT = 1024;
 // that the registry is authoritative, so hand-edits survive a sync.
 const DEFAULT_CATEGORY: Record<string, string> = {
   "browser-extension-builder": "frontend",
+  forge: "productivity",
   "frontend-design": "frontend",
   "grill-me": "productivity",
   hallmark: "frontend",
@@ -29,7 +30,6 @@ const DEFAULT_CATEGORY: Record<string, string> = {
   "react-expert": "frontend",
   "react-native": "frontend",
   "seo-expert": "writing",
-  "ship-issue": "productivity",
   "svg-animations": "frontend",
   "technical-writer": "writing",
   "terraform-expert": "infrastructure",

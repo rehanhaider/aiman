@@ -58,7 +58,7 @@ scripts/manage-skills.sh uninstall hallmark
 | Skill | What it does |
 | --- | --- |
 | `pr-review` | Review a PR/branch for real defects, prioritize by impact, post the outcome to GitHub |
-| `ship-issue` | Drive one issue (Linear, GitHub, or in-repo docs) to a PR and loop review→rectify until clean; stops before merge |
+| `forge` | Drive one issue (Linear, GitHub, or in-repo docs) to a PR and loop review→rectify until clean; stops before merge. `--tranches` splits the work into an approved plan and waits for feedback after each tranche |
 
 ### Meta & utilities
 

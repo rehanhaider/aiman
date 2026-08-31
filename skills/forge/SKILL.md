@@ -1,17 +1,18 @@
 ---
-name: ship-issue
+name: forge
 description: >-
   Take a tracked issue from wherever it lives — Linear, GitHub Issues, or an
   in-repo document — through implementation, a pull request, and a self-driving
   review-and-rectify loop, stopping at a verified ready-to-merge state without
   merging. Use when the user asks to ship, land, or implement an issue end to
   end, to shepherd or babysit a pull request through review, to keep resolving
-  review comments until a PR is clean, or invokes "/ship-issue". With
+  review comments until a PR is clean, or invokes "/forge" or "/ship-issue".
+  With
   --tranches, the work is split into an approved plan and the run pauses for
   the user's feedback after every tranche.
 ---
 
-# Ship Issue
+# Forge
 
 Own one issue from its tracker to a pull request that a fresh review reports as
 clean, then hand it back. One invocation covers every cycle; the user should not
@@ -43,7 +44,7 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
 ## Arguments
 
 ```text
-/ship-issue <issue-ref> [--reviewer local|cursor|codex] [--pr <number>] [--cycles <n>] [--tranches]
+/forge <issue-ref> [--reviewer local|cursor|codex] [--pr <number>] [--cycles <n>] [--tranches]
 ```
 
 - `issue-ref` — a Linear key, GitHub issue number, document path, or plain
@@ -296,7 +297,7 @@ over the field when they disagree.
 
 On `timeout`, do not loop blindly. Report that the review has not arrived and
 tell the user the exact command to resume:
-`/ship-issue --pr <number> --reviewer codex`.
+`/forge --pr <number> --reviewer codex`.
 
 On `closed`, stop and report.
 

@@ -15,6 +15,13 @@
       "category": "frontend"
     },
     {
+      "name": "forge",
+      "source": "./skills/forge",
+      "description": "Take a tracked issue from wherever it lives — Linear, GitHub Issues, or an in-repo document — through implementation, a pull request, and a self-driving review-and-rectify loop, stopping at a verified ready-to-merge state without merging. Use when the user asks to ship, land, or implement an issue end to end, to shepherd or babysit a pull request through review, to keep resolving review comments until a PR is clean, or invokes \"/forge\" or \"/ship-issue\". With --tranches, the work is split into an approved plan and the run pauses for the user's feedback after every tranche.",
+      "version": "0.2.0",
+      "category": "productivity"
+    },
+    {
       "name": "frontend-design",
       "source": "./skills/frontend-design",
       "description": "Build production-grade frontend interfaces using Astro 6, React 19 islands, Tailwind CSS v4, and DaisyUI v5. Enforce strict theming (semantic tokens only, light/dark, anti-flash) and islands discipline, and apply design craft progressively via mode-based layers (Baseline, Design, Advanced) chosen by UI type. Also produces accompanying visuals: inline SVG state illustrations (empty, error, success, welcome) and JSON image-prompts for hero and marketing artwork. Default to Baseline when unsure. Use when the project runs on (or targets) this Astro + DaisyUI stack; for aesthetic-first standalone page builds with no stack constraint, prefer the hallmark skill.",
@@ -62,13 +69,6 @@
       "description": "SEO improvement, recovery, and audit skill for existing sites — plus GEO (AI-search optimization for Perplexity, ChatGPT Search, Gemini), AEO (snippets/voice), and keyword analysis. Modes: IMPROVE (default — ground truth from the codebase and Search Console, prioritized fix backlog, shipped with regression tests), RECOVER (traffic drops, deindexing, migration damage), AUDIT (scored SEO/GEO/AEO report), plus direct implementation of named techniques from a 30-entry playbook (meta tags, schema markup, sitemaps, redirects, llms.txt, OG images, Core Web Vitals). Use when the user wants to improve SEO, fix rankings, diagnose a traffic drop, recover from a migration, audit a site, check AI search readiness, or target keywords.",
       "version": "0.1.0",
       "category": "writing"
-    },
-    {
-      "name": "ship-issue",
-      "source": "./skills/ship-issue",
-      "description": "Take a tracked issue from wherever it lives — Linear, GitHub Issues, or an in-repo document — through implementation, a pull request, and a self-driving review-and-rectify loop, stopping at a verified ready-to-merge state without merging. Use when the user asks to ship, land, or implement an issue end to end, to shepherd or babysit a pull request through review, to keep resolving review comments until a PR is clean, or invokes \"/ship-issue\". With --tranches, the work is split into an approved plan and the run pauses for the user's feedback after every tranche.",
-      "version": "0.2.0",
-      "category": "productivity"
     },
     {
       "name": "svg-animations",

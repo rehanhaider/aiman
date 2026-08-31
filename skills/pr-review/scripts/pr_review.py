@@ -351,7 +351,7 @@ def finding_to_comment(finding: dict) -> dict:
 
 
 # Stable identifier proving a review was posted by this skill rather than typed
-# by hand. ship-issue/scripts/pr_watch.py requires this exact string by default;
+# by hand. forge/scripts/pr_watch.py requires this exact string by default;
 # changing it here without changing it there breaks the clean verdict.
 SIGNATURE = "rehanhaider/pr-review-skill"
 
