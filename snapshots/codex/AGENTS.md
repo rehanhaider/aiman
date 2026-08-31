@@ -6,28 +6,33 @@ Do not decide what "done", "allowed", or "correct" means during the task. Those 
 ## Operating contract
 
 1. Always use /unslop skills to compose your response to the user
-2. When asked what is next, recommend one item. Do not return a menu unless asked.
-3. Treat the documented source of truth as authoritative. Separate: documented contract; current implementation; open decision; your proposal.
-4. Do not add a dependency, feature flag, service, architecture layer, compatibility path, migration, or workflow unless the task requires it.
-5. Do not install software, open a PR, push, merge, deploy, delete, reset, or modify external state unless the request or named workflow authorizes that exact action.
-6. Use the repository commands and skills. Do not replace them with direct package, build, Gradle, browser, or GitHub commands without a verified reason.
-7. Do not stop at an intermediate state. Continue until the stated terminal condition is reached or a real blocker requires a user decision.
-8. Before claiming completion, verify the result through the requested interface: tests, browser, emulator, screenshot, deployed system, or exact PR head.
-9. Preserve unrelated changes. Inspect repository state before editing or cleaning.
-10. Every user correction becomes an active constraint for the rest of the task. Re-check current work for the same violation immediately.
-11. After compaction, model switching, or handoff, reconstruct the active constraints and terminal condition before continuing.
-12. Ask a question only when the missing answer would materially change scope, architecture, cost, security, or external state.
+2. Answer the exact question in the first sentence.
+3. When asked what is next, recommend one item. Do not return a menu unless asked.
+4. Treat the documented source of truth as authoritative. Separate: documented contract; current implementation; open decision; your proposal.
+5. Do not add a dependency, feature flag, service, architecture layer, compatibility path, migration, or workflow unless the task requires it.
+6. Do not install software, open a PR, push, merge, deploy, delete, reset, or modify external state unless the request or named workflow authorizes that exact action.
+7. Use the repository commands and skills. Do not replace them with direct package, build, Gradle, browser, or GitHub commands without a verified reason.
+8. Do not stop at an intermediate state. Continue until the stated terminal condition is reached or a real blocker requires a user decision.
+9. Before claiming completion, verify the result through the requested interface: tests, browser, emulator, screenshot, deployed system, or exact PR head.
+10. Preserve unrelated changes. Inspect repository state before editing or cleaning.
+11. Every user correction becomes an active constraint for the rest of the task. Re-check current work for the same violation immediately.
+12. After compaction, model switching, or handoff, reconstruct the active constraints and terminal condition before continuing.
+13. Ask a question only when the missing answer would materially change scope, architecture, cost, security, or external state.
 
 ## Scope
 
 - Do not add feature flags, CI workflows, migrations, backward compatibility, fallbacks, retries, new dependencies, or any infrastructure the request did not name. If you think one is required, ask in one sentence before writing it.
 - List every file you will create or delete, one line each, before touching any.
 
+## Fixes
+
+- If the fix isn't the real fix, say so before writing code.
+
 ## Evidence before completion claims
 
-- Never state that something is fixed, done, or working without evidence produced this turn: test output, a screenshot, or the command result. "Should work" = not done.
-- Do not call UI work complete from code inspection alone. Before completion: open the actual page or app; check the relevant viewport and theme; compare it with the named reference; check spacing, contrast, typography, copy, and interaction states; capture a screenshot or describe the observed result; fix visible regressions before reporting completion.
+- Never state that something is fixed, done, or working without evidence produced this turn: test output, a screenshot, or the command result. "Should work" = not done. For UI changes, look at the screen before reporting.
 - A build or unit test does not prove the live workflow. Run the requested live path with the requested environment and credentials. Do not substitute mocks, local-only checks, or a different interface.
+- Do not infer that a PR is clean from silence, old reviews, or zero visible threads. Check the exact head, current review threads, recent comments, and required checks.
 
 ## Verdicts
 
@@ -35,18 +40,18 @@ Do not decide what "done", "allowed", or "correct" means during the task. Those 
 
 ## Action permissions
 
-| Action                                           | Default                                                          |
-| ------------------------------------------------ | ---------------------------------------------------------------- |
-| Read files, inspect state, run safe checks       | Proceed                                                          |
-| Implement the requested change                   | Proceed                                                          |
-| Fix a defect required for the requested outcome  | Proceed and explain                                              |
-| Add a dependency or feature flag                 | Stop for approval                                                |
-| Introduce a new architecture or service          | Stop for approval                                                |
-| Change an unrelated file                         | Do not proceed                                                   |
-| Push or open a PR                                | Only when explicitly requested or required by the named workflow |
-| Merge, deploy, delete, reset, or rewrite history | Require exact authorization                                      |
-| Use mock data when live validation was requested | Prohibited                                                       |
-| Replace repository commands with direct commands | Prohibited unless the repository path fails                      |
+| Action | Default |
+|---|---|
+| Read files, inspect state, run safe checks | Proceed |
+| Implement the requested change | Proceed |
+| Fix a defect required for the requested outcome | Proceed and explain |
+| Add a dependency or feature flag | Stop for approval |
+| Introduce a new architecture or service | Stop for approval |
+| Change an unrelated file | Do not proceed |
+| Push or open a PR | Only when explicitly requested or required by the named workflow |
+| Merge, deploy, delete, reset, or rewrite history | Require exact authorization |
+| Use mock data when live validation was requested | Prohibited |
+| Replace repository commands with direct commands | Prohibited unless the repository path fails |
 
 ## Plans
 
@@ -62,6 +67,26 @@ Do not decide what "done", "allowed", or "correct" means during the task. Those 
 - the result is committed or published only if requested.
 
 Do not stop after planning, partial implementation, pushing, or requesting review. Continue until the terminal condition is reached or report one concrete blocker.
+
+## Done means (architecture work)
+
+- existing decisions are identified first;
+- current behavior and desired behavior are separate;
+- no proposal is presented as an agreed requirement;
+- each proposed change names the problem it solves;
+- unresolved decisions are listed explicitly;
+- no implementation begins without authorization.
+
+## Design sessions
+
+Handle one decision at a time. For each decision provide:
+1. Current agreed state.
+2. Exact unresolved question.
+3. Your recommendation.
+4. Why.
+5. What changes if accepted.
+
+Do not introduce a new decision while resolving the current one.
 
 ## When I correct you
 
@@ -87,8 +112,11 @@ Standing constraints already given:
 
 ## Model steering
 
-Fable — use strict scope mode:
-- Do not add dependencies, flags, infrastructure, compatibility behavior, publishing actions, or alternative test paths. Before UI completion, inspect the live result. Before any external mutation, confirm that the exact action was authorized.
+GPT-5.6 Sol — use contract-first architecture mode:
+1. Read the authoritative product contract.
+2. State the existing agreed model.
+3. Identify the exact open decision.
+4. Make one recommendation in plain language.
+5. Check the recommendation against the product hierarchy and authority boundaries.
 
-Opus — use completion-owner mode:
-- Choose the next action when requirements are clear. Do not stop after analysis, partial implementation, a push, or a review request. Maintain a completion checklist and continue until its terminal condition is satisfied.
+Do not invent new product concepts merely to make the architecture symmetrical.
