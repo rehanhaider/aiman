@@ -6,14 +6,17 @@ description: >-
   review-and-rectify loop, stopping at a verified ready-to-merge state without
   merging. Use when the user asks to ship, land, or implement an issue end to
   end, to shepherd or babysit a pull request through review, to keep resolving
-  review comments until a PR is clean, or invokes "/ship-issue".
+  review comments until a PR is clean, or invokes "/ship-issue". With
+  --tranches, the work is split into an approved plan and the run pauses for
+  the user's feedback after every tranche.
 ---
 
 # Ship Issue
 
 Own one issue from its tracker to a pull request that a fresh review reports as
 clean, then hand it back. One invocation covers every cycle; the user should not
-have to re-prompt between review rounds.
+have to re-prompt between review rounds. Under `--tranches` the opposite is the
+contract: the run pauses at every checkpoint and waits for feedback.
 
 ## Invariants
 
@@ -27,16 +30,20 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
    responsible until the loop terminates or a stop condition fires.
    Keep going while each round makes progress. Rounds are not rationed — a
    review that keeps finding real defects is the loop working, not failing.
+   Under `--tranches`, a checkpoint stop is this invariant working, not
+   breaking it: the stop is scheduled, announced, and hands back on purpose.
 3. **Never close the issue.** Advance its status to in-review at most.
 4. **Stay inside the issue's scope.** Unrelated improvements belong to other
    issues, however tempting.
 5. **Report honestly.** A skipped check, an unreviewed area, or an unresolved
    thread goes in the final report in plain words.
+6. **Under `--tranches`, never cross a checkpoint.** No code before the plan is
+   approved, and no tranche begins while the previous one awaits feedback.
 
 ## Arguments
 
 ```text
-/ship-issue <issue-ref> [--reviewer local|cursor|codex] [--pr <number>] [--cycles <n>]
+/ship-issue <issue-ref> [--reviewer local|cursor|codex] [--pr <number>] [--cycles <n>] [--tranches]
 ```
 
 - `issue-ref` — a Linear key, GitHub issue number, document path, or plain
@@ -52,13 +59,17 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
 - `--pr` — resume the loop on an existing PR and skip implementation.
 - `--cycles` — hard cap on rectification rounds. Unset by default: the loop runs
   until it converges or stalls, not until a counter expires.
+- `--tranches` — plan first, then gate: split the work into tranches, get the
+  plan approved before any code, and end the turn after each finished tranche
+  to wait for feedback. See phase 2a.
 
 In the commands below, `<skill>` is the directory containing this file.
 
 ## 1. Resolve the target and the source
 
-If `--pr` is given, or the current branch already has an open PR, skip to
-phase 4 and announce that you are resuming.
+If `--pr` is given, or the current branch already has an open PR, announce that
+you are resuming. When the issue or PR carries an unfinished tranche checklist
+(phase 2a), continue at the first unchecked tranche; otherwise skip to phase 4.
 
 Otherwise detect where the issue lives and read it. Follow
 [references/issue-sources.md](references/issue-sources.md) — the source is a
@@ -87,10 +98,39 @@ Then, using the repository's own commands:
 
 Do not proceed to a PR with a failing gate. Fix it, or stop and report it.
 
+## 2a. Tranches (`--tranches` only)
+
+Without the flag, skip this section.
+
+**Plan first.** Before writing any code, derive the tranches from the
+acceptance criteria: each tranche independently implementable, testable, and
+committable, naming the criteria it covers. Post the plan as a Markdown
+checklist comment on the issue — move it into the PR body once the PR exists —
+so it survives a lost session, then stop and ask for approval. Never implement
+an unapproved plan.
+
+**One tranche per turn.** A tranche runs under the phase-2 rules: build, test,
+commit, push. Then tick its checkbox and end the turn with:
+
+1. What changed, the checks run, and the commit hash.
+2. The remaining checklist.
+3. One question: continue, or correct.
+
+**Feedback is binding.** A correction becomes a standing constraint for every
+remaining tranche. Before continuing, re-check the tranches already built for
+the same problem and fix them in the next commit.
+
+**The PR stays a draft** from its first push until the final tranche is
+approved — the one exception to phase 3. External reviewers ignoring drafts is
+exactly what a half-finished plan wants. When the last tranche is approved,
+mark the PR ready for review and run phases 4–7 unchanged.
+
 ## 3. Open the pull request
 
 Push the branch and open a PR that is **ready for review, not a draft** —
-external reviewers ignore drafts, which stalls the loop silently.
+external reviewers ignore drafts, which stalls the loop silently. (Under
+`--tranches` the PR is deliberately a draft until the final tranche is
+approved — phase 2a.)
 
 The body carries the issue reference, a summary of the implementation, each
 acceptance criterion mapped to where it is satisfied, the validation performed,
@@ -281,6 +321,7 @@ Stop and report when any of these fires:
 | `verdict` is `unreviewed`, `stale`, or `unclear` after a cycle | Say which, and that the PR is *not* confirmed clean |
 | **Stalled** — a round ends with the same unresolved threads it started with, or a finding you already rectified comes back unchanged twice | Repeating the round will not help. Hand back with what is stuck and why |
 | `--cycles` given and reached | Only when the user asked for a cap |
+| A `--tranches` checkpoint is reached | Report the tranche and wait — a scheduled stop, not a failure |
 | A finding needs a decision about intended behaviour | Escalate with the specific question |
 | Requirements ambiguous, credentials missing, or required validation impossible | Escalate before guessing |
 | A destructive or irreversible operation is needed | Ask first |
@@ -300,13 +341,15 @@ Every run ends with:
 1. The issue, its source, and the PR link.
 2. Acceptance criteria mapped to how each is satisfied.
 3. One row per review comment across all cycles: decision and reasoning.
-4. Files changed and the final commit hash on the pushed branch.
-5. Checks run and their results, including anything skipped.
-6. Threads left unresolved and why.
-7. Which reviewer produced the verdict, and whether it was independent of the
+4. Under `--tranches`: the approved plan, and per tranche the feedback
+   received and what it changed.
+5. Files changed and the final commit hash on the pushed branch.
+6. Checks run and their results, including anything skipped.
+7. Threads left unresolved and why.
+8. Which reviewer produced the verdict, and whether it was independent of the
    author. A `clean` from `local` or `cursor` is the author's own agent
    reporting on the author's own work.
-8. The terminal state: ready to merge, escalated, or not converged.
+9. The terminal state: ready to merge, escalated, or not converged.
 
 ## References
 

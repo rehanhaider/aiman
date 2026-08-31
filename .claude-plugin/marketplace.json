@@ -66,8 +66,8 @@
     {
       "name": "ship-issue",
       "source": "./skills/ship-issue",
-      "description": "Take a tracked issue from wherever it lives — Linear, GitHub Issues, or an in-repo document — through implementation, a pull request, and a self-driving review-and-rectify loop, stopping at a verified ready-to-merge state without merging. Use when the user asks to ship, land, or implement an issue end to end, to shepherd or babysit a pull request through review, to keep resolving review comments until a PR is clean, or invokes \"/ship-issue\".",
-      "version": "0.1.0",
+      "description": "Take a tracked issue from wherever it lives — Linear, GitHub Issues, or an in-repo document — through implementation, a pull request, and a self-driving review-and-rectify loop, stopping at a verified ready-to-merge state without merging. Use when the user asks to ship, land, or implement an issue end to end, to shepherd or babysit a pull request through review, to keep resolving review comments until a PR is clean, or invokes \"/ship-issue\". With --tranches, the work is split into an approved plan and the run pauses for the user's feedback after every tranche.",
+      "version": "0.2.0",
       "category": "productivity"
     },
     {
