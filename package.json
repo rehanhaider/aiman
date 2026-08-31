@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "description": "Central store for skills and AI assistant configuration.",
-  "packageManager": "pnpm@10.33.4",
   "engines": {
     "node": ">=22.6"
   },

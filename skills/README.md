@@ -9,9 +9,9 @@ Agent skills for Claude Code / Cursor / Codex-style assistants. Each skill is a 
 Link the library into the directories Claude Code, Codex, and Cursor read:
 
 ```bash
-pnpm link-skills                 # all skills, globally
-pnpm link-skills hallmark        # just one
-pnpm link-skills --project       # into this repo instead of the home directory
+npm run link-skills                 # all skills, globally
+npm run link-skills hallmark        # just one
+npm run link-skills -- --project    # into this repo instead of the home directory
 ```
 
 Or install a pinned version from the plugin marketplace this repo publishes:
@@ -70,7 +70,7 @@ See the [repo README](../README.md) for the difference, updates, and versioning.
 - Frontmatter `name` must match the directory name; `description` stays under 1024 characters
   and says *when to use* the skill, not just what it is.
 - Deep material goes in `references/` (loaded on demand), not in `SKILL.md`.
-- Every relative link and `references/...` path must resolve — `pnpm check` enforces this,
+- Every relative link and `references/...` path must resolve — `npm run check` enforces this,
   along with the registry and this catalog; run it before committing.
 - Evals live in the skill's own `evals/` directory; retired guides live in `.archive/`.
-- A new skill needs a `pnpm sync` to enter the registry; it starts at version `0.1.0`.
+- A new skill needs a `npm run sync` to enter the registry; it starts at version `0.1.0`.

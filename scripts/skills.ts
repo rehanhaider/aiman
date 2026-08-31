@@ -253,7 +253,7 @@ function check(): number {
   const market = readRegistry();
   const expected = buildEntries(skills, market.plugins);
   if (JSON.stringify(expected) !== JSON.stringify(market.plugins)) {
-    console.log("registry:\n  ERROR   .claude-plugin/marketplace.json is stale — run `pnpm sync`");
+    console.log("registry:\n  ERROR   .claude-plugin/marketplace.json is stale — run `npm run sync`");
     errors++;
   }
 
@@ -280,7 +280,7 @@ function release(name: string, level = "patch"): number {
   const market = readRegistry();
   const entry = market.plugins.find((e) => e.name === name);
   if (!entry) {
-    console.error(`No skill named '${name}' in the registry. Run \`pnpm sync\` if it is new.`);
+    console.error(`No skill named '${name}' in the registry. Run \`npm run sync\` if it is new.`);
     return 1;
   }
   const [major, minor, patch] = entry.version.split(".").map(Number);

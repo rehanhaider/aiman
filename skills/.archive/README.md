@@ -1,7 +1,7 @@
 # Archive
 
 Retired or superseded guides kept for reference. Nothing in this directory is an active skill:
-`pnpm check` and the installer ignore it, and nothing in the live library links here.
+`npm run check` and the installer ignore it, and nothing in the live library links here.
 
 | File | Why it's archived |
 | --- | --- |
