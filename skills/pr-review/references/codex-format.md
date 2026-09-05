@@ -48,26 +48,33 @@ all-clear, and automation treats that sentence as ready-to-merge.
 These belong on the pull request rather than in a chat reply. The loop that
 reads this review is a program; anything not posted here is lost.
 
-## Signature
+## Attribution and signature
 
-`post` ends the body with a trailer naming who produced the review:
+`post` opens the body with a note naming who read the diff and closes it with a
+hidden marker:
 
 ```markdown
+> [!NOTE]
+> 🤖 Reviewed by Claude/Opus-5
+
 Reviewed `31ded9d53a` — no new issues found.
 
-— rehanhaider/pr-review-skill · Claude Opus 5
+<!-- rehanhaider/pr-review-skill -->
 ```
 
-`rehanhaider/pr-review-skill` is the default and is what automation matches on;
-keep that part unchanged. Use `--signed-by` to append the model, and
-`--signed-by ''` to omit the trailer. It is always the last line, never the
-first, so a reader — human or machine — sees the verdict before the
-attribution.
+The note comes from `--signed-by`, which is required and takes a harness/model
+label: `Claude/Opus-5`, `Cursor/Grok-4.7`. GitHub renders it as a callout, so
+a reader sees at a glance which model produced the review. Name the model that
+actually ran; a label naming one that did not is a false record.
 
-The trailer marks the review as machine-produced rather than typed by hand, and
-records which model produced it. It does not make the review independent: it is
-posted by the same GitHub account that authored the pull request, and nothing
-stops a person typing the same line by hand.
+The HTML comment is what automation matches on. GitHub does not display it but
+returns it through the API, and `post` always adds it, so no `--signed-by`
+value can leave `forge`'s watcher unable to call the pull request clean. The
+watcher skips the leading note before reading the verdict line, so the verdict
+line still has to be exact.
+
+Neither makes the review independent: it is posted by the same GitHub account
+that authored the pull request.
 
 The summary must not contain:
 

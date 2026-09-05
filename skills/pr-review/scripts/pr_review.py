@@ -351,34 +351,47 @@ def finding_to_comment(finding: dict) -> dict:
 
 
 # Stable identifier proving a review was posted by this skill rather than typed
-# by hand. forge/scripts/pr_watch.py requires this exact string by default;
+# by hand. Rendered as an HTML comment: invisible on GitHub, returned verbatim
+# by the API. forge/scripts/pr_watch.py requires this exact string by default;
 # changing it here without changing it there breaks the clean verdict.
 SIGNATURE = "rehanhaider/pr-review-skill"
+
+
+def reviewer_note(reviewer: str) -> list[str]:
+    """The visible attribution: a GitHub alert naming who read the diff, as
+    harness/model — `Claude/Opus-5`, `Cursor/Grok-4.7`."""
+    return ["> [!NOTE]", f"> 🤖 Reviewed by {reviewer.strip()}", ""]
 
 
 def render_summary(
     head_sha: str,
     findings: list[dict],
     folded: list[dict],
-    signature: str | None = None,
+    reviewer: str | None = None,
     suspicions: list[dict] | None = None,
+    signature: str | None = SIGNATURE,
 ) -> str:
+    lines: list[str] = []
+    if reviewer and reviewer.strip():
+        # Attribution leads, as an alert block. pr_watch.py skips a leading
+        # alert before reading the verdict line, so the verdict still governs.
+        lines += reviewer_note(reviewer)
     counts = Counter(f["severity"] for f in findings)
     parts = [f"{counts[s]} {s}" for s in SEVERITIES if counts[s]]
     if findings:
         noun = "finding" if len(findings) == 1 else "findings"
-        lines = [
+        lines.append(
             f"Reviewed `{head_sha[:10]}` — {len(findings)} {noun} ({', '.join(parts)})."
-        ]
+        )
     elif suspicions:
         # Never the all-clear sentence while a severe candidate is unresolved:
         # automation reads that phrase as ready-to-merge.
         n = len(suspicions)
-        lines = [f"Reviewed `{head_sha[:10]}` — no findings, "
-                 f"{n} unverified."]
+        lines.append(f"Reviewed `{head_sha[:10]}` — no findings, "
+                     f"{n} unverified.")
     else:
         # Exact wording: automation treats this phrase as the all-clear signal.
-        lines = [f"Reviewed `{head_sha[:10]}` — no new issues found."]
+        lines.append(f"Reviewed `{head_sha[:10]}` — no new issues found.")
     if folded:
         lines += ["", "Additional low-priority findings:", ""]
         for f in folded:
@@ -394,9 +407,9 @@ def render_summary(
             lines.append(f"- {loc} — {s_['consequence'].strip()} "
                          f"Check: {s_['check'].strip()}")
     if signature:
-        # Trailer, never the first line: the all-clear sentence must stay first
-        # so automation reading only line one is unaffected.
-        lines += ["", f"— {signature}"]
+        # Last and invisible: a reader never sees it, and a person typing a
+        # review by hand does not know to add it.
+        lines += ["", f"<!-- {signature} -->"]
     return "\n".join(lines) + "\n"
 
 
@@ -531,6 +544,8 @@ def cmd_post(args: argparse.Namespace) -> int:
                 print(f"  - {e}", file=sys.stderr)
             return 1
 
+    if not args.signed_by.strip() or "\n" in args.signed_by:
+        die("--signed-by needs a one-line harness/model label, e.g. 'Claude/Opus-5'")
     body = render_summary(commit, findings, folded, args.signed_by, suspicions)
 
     if comments and not args.no_validate:
@@ -653,9 +668,11 @@ def main() -> int:
     p.add_argument("--dry-run", action="store_true", help="validate and print the payload without posting")
     p.add_argument("--allow-moved-head", action="store_true",
                    help="post even though the PR head moved since the review (exit 3 otherwise)")
-    p.add_argument("--signed-by", default=SIGNATURE,
-                   help=f"trailer identifying who produced the review (default: {SIGNATURE!r}); "
-                        f"append the model, e.g. '{SIGNATURE} · Claude Opus 5'. Pass '' to omit")
+    p.add_argument("--signed-by", required=True, metavar="HARNESS/MODEL",
+                   help="who read the diff, as harness/model, e.g. 'Claude/Opus-5' or "
+                        "'Cursor/Grok-4.7'; rendered as a note at the top of the review. "
+                        f"The machine signature {SIGNATURE!r} is always added as a "
+                        "hidden HTML comment, whatever this says")
     p.set_defaults(func=cmd_post)
 
     c = sub.add_parser("cleanup", help="remove the worktree gather created")

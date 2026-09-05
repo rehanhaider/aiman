@@ -4,12 +4,12 @@ description: >-
   Take a tracked issue from wherever it lives — Linear, GitHub Issues, or an
   in-repo document — through implementation, a pull request, and a self-driving
   review-and-rectify loop, stopping at a verified ready-to-merge state without
-  merging. Use when the user asks to ship, land, or implement an issue end to
-  end, to shepherd or babysit a pull request through review, to keep resolving
-  review comments until a PR is clean, or invokes "/forge" or "/ship-issue".
-  With
-  --tranches, the work is split into an approved plan and the run pauses for
-  the user's feedback after every tranche.
+  merging. The reviewer is local, Cursor, Codex, or Bugbot. Use when the user
+  asks to ship, land, or implement an issue end to end, to shepherd or babysit
+  a pull request through review, to keep resolving review comments until a PR
+  is clean, or invokes "/forge" or "/ship-issue". With --tranches, the run
+  splits the work into an approved plan. Each tranche waits uncommitted for
+  the user's review, and the run fixes what they flag before asking to commit.
 ---
 
 # Forge
@@ -39,12 +39,13 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
 5. **Report honestly.** A skipped check, an unreviewed area, or an unresolved
    thread goes in the final report in plain words.
 6. **Under `--tranches`, never cross a checkpoint.** No code before the plan is
-   approved, and no tranche begins while the previous one awaits feedback.
+   approved. Do not commit or push a tranche until the user confirms it, and do
+   not begin the next tranche while the current one awaits feedback.
 
 ## Arguments
 
 ```text
-/forge <issue-ref> [--reviewer local|cursor|codex] [--pr <number>] [--cycles <n>] [--tranches]
+/forge <issue-ref> [--reviewer local|cursor|codex|bugbot] [--pr <number>] [--cycles <n>] [--tranches]
 ```
 
 - `issue-ref` — a Linear key, GitHub issue number, document path, or plain
@@ -56,13 +57,18 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
   | `local` (default) | the `pr-review` skill, in this context | No — same model, same context, same account |
   | `cursor` | `cursor-agent` running the same method, out of process | In judgement, yes; the review still posts under your account |
   | `codex` | `@codex` on GitHub | Yes, in judgement and identity |
+  | `bugbot` | Cursor Bugbot on GitHub, via `@cursor review` | Yes, in judgement and identity |
+
+  One reviewer per run. Every posted review from `local` or `cursor` opens
+  with a note naming who read the diff, as harness/model — `Claude/Opus-5`,
+  `Cursor/Grok-4.7` — so the PR's history says which model said what.
 
 - `--pr` — resume the loop on an existing PR and skip implementation.
 - `--cycles` — hard cap on rectification rounds. Unset by default: the loop runs
   until it converges or stalls, not until a counter expires.
 - `--tranches` — plan first, then gate: split the work into tranches, get the
-  plan approved before any code, and end the turn after each finished tranche
-  to wait for feedback. See phase 2a.
+  plan approved before any code, and keep each tranche uncommitted until the
+  user reviews and confirms it. See phase 2a.
 
 In the commands below, `<skill>` is the directory containing this file.
 
@@ -110,16 +116,23 @@ checklist comment on the issue — move it into the PR body once the PR exists �
 so it survives a lost session, then stop and ask for approval. Never implement
 an unapproved plan.
 
-**One tranche per turn.** A tranche runs under the phase-2 rules: build, test,
-commit, push. Then tick its checkbox and end the turn with:
+**One tranche at a time.** Implement and test the tranche, but do not commit or
+push it. End the turn with:
 
-1. What changed, the checks run, and the commit hash.
+1. What changed and the checks run.
 2. The remaining checklist.
-3. One question: continue, or correct.
+3. One question: confirm the tranche, or name the corrections.
 
 **Feedback is binding.** A correction becomes a standing constraint for every
-remaining tranche. Before continuing, re-check the tranches already built for
-the same problem and fix them in the next commit.
+remaining tranche. Fix it in the current uncommitted tranche, re-check earlier
+work for the same problem, rerun the affected checks, and present the updated
+result. Then wait for confirmation again. Silence is not confirmation, and an
+open correction blocks the commit.
+
+**Commit only on confirmation.** Once the user confirms the tranche, commit and
+push it, then tick its checkbox. Report the commit hash and wait before starting
+the next tranche. Confirming one tranche approves that tranche and nothing after
+it.
 
 **The PR stays a draft** from its first push until the final tranche is
 approved — the one exception to phase 3. External reviewers ignoring drafts is
@@ -138,6 +151,27 @@ acceptance criterion mapped to where it is satisfied, the validation performed,
 and any known limitation. Use `Closes #<n>` only when the merge should close a
 GitHub issue.
 
+**The body also carries the review boundary.** Add a `## Scope` section with
+two lists:
+
+```markdown
+## Scope
+
+In scope:
+- <each acceptance criterion, one line>
+
+Out of scope:
+- <exclusions the issue names>
+- <behaviour in the touched files that this change does not alter>
+```
+
+It is the one thing every reviewer reads: `pr-review` stages it for `local`
+and `cursor`, and Codex and Bugbot read the PR description. A comment that
+asks for work outside it is answered from it (phase 6), so write it as the
+contract you are prepared to hold the review to. It never excuses a defect the
+diff introduces: a bug in an "out of scope" file that this change caused or
+newly exposed is in scope by definition.
+
 ## 4. Trigger a review
 
 **`local`** — invoke the `pr-review` skill against this PR. It posts its outcome
@@ -148,12 +182,14 @@ author of a change is the worst judge of it.
 ```bash
 python3 <pr-review>/scripts/pr_review.py post --workdir <workdir> \
   --findings-file findings.json \
-  --signed-by 'rehanhaider/pr-review-skill · <your model>'
+  --signed-by 'Claude/<the model running this session, e.g. Opus-5>'
 ```
 
 **`cursor`** — invoke the `pr-review` skill with `--reviewer cursor`. It runs the
-same method through `cursor-agent` on Opus 4.6, out of process and read-only,
-then posts from here as usual. Driven directly:
+same method through `cursor-agent`, out of process and read-only, then posts
+from here as usual. The model is `cursor_review.py`'s default (Opus 5,
+extra-high thinking, 300k window) unless `--model` says otherwise; the label
+it prints as `signed_by` follows whatever model ran. Driven directly:
 
 ```bash
 python3 <pr-review>/scripts/pr_review.py gather <number> --repo <owner/name>
@@ -161,7 +197,7 @@ python3 <pr-review>/scripts/cursor_review.py --workdir <workdir>
 python3 <pr-review>/scripts/pr_review.py post --workdir <workdir> \
   --findings-file <workdir>/findings.json \
   --suspicions-file <workdir>/suspicions.json \
-  --signed-by 'rehanhaider/pr-review-skill · cursor-agent claude-opus-4-6'
+  --signed-by '<the signed_by value cursor_review.py printed, e.g. Cursor/Opus-5>'
 ```
 
 Omit `--suspicions-file` when `suspicions.json` is an empty array.
@@ -171,20 +207,21 @@ that as no review at all** — re-run it, or fall back to `local`. Never post an
 empty `findings.json` that came from a run which exited non-zero: that publishes
 the all-clear sentence over a review that never happened.
 
-**Signing is not decoration.** `pr_watch.py` refuses a `clean` verdict unless the
-review body contains the exact string `rehanhaider/pr-review-skill`, so a
-`--signed-by` value that drops it leaves the loop stuck on `unclear` forever, no
-matter how clean the PR is. Name the model in the suffix, never in place of the
-signature. Keep the review URL that `post` prints on success — phase 5 uses it
-to prove this specific review landed.
+**`--signed-by` is the visible label, not the machine signature.** `post`
+renders it as a note at the top of the review (`🤖 Reviewed by Claude/Opus-5`)
+and always adds the hidden marker `pr_watch.py` keys on as an HTML comment, so
+no label can leave the loop stuck. Name the harness and the model that actually
+read the diff; a review signed as a model that did not run is a false record.
+Keep the review URL that `post` prints on success — phase 5 uses it to prove
+this specific review landed.
 
 > **Neither local nor cursor is an independent attestation.** Both post under
 > the GitHub account that authored the PR, so a clean result means "an agent
 > working for the author found nothing", not that an outside reviewer agreed.
 > `cursor` at least buys a different model reading with no memory of writing the
 > code; `local` does not even buy that. Say which one ran in the final report.
-> `--reviewer codex` is the genuinely independent path; prefer it when the
-> change touches security, data, or money.
+> `codex` and `bugbot` are the genuinely independent paths; prefer one of them
+> when the change touches security, data, or money.
 
 If `pr_review.py post` exits 3, the head moved while the review was being
 written. Do not retry the post — review the new head from the beginning. After
@@ -196,6 +233,17 @@ the branch.
 ```bash
 gh pr comment <number> --repo <owner/name> --body '@codex review'
 ```
+
+**`bugbot`** — the same, addressed to Cursor. It must be a standalone PR
+comment; Bugbot ignores the phrase inside a thread reply:
+
+```bash
+gh pr comment <number> --repo <owner/name> --body '@cursor review'
+```
+
+Bugbot skips drafts unless the repository's Cursor settings say otherwise, and
+it reads the PR description, so the `## Scope` section from phase 3 is the only
+boundary it will see.
 
 Never trigger a review against a head that has uncommitted or unpushed changes.
 The review would describe code that no longer exists.
@@ -217,9 +265,34 @@ python3 <skill>/scripts/pr_watch.py wait <number> --repo <owner/name> \
   --timeout 1800 --interval 30
 ```
 
-`wake_reason` in the output says which channel ended the wait. Reviewers other
-than codex: known bots (cursor, coderabbit, gemini, copilot) and any `[bot]`
-account also wake the wait but never grade clean on their own; extend
+`wake_reason` in the output says which channel ended the wait.
+
+For `bugbot`, block the same way, without `--allow-unsigned`:
+
+```bash
+python3 <skill>/scripts/pr_watch.py wait <number> --repo <owner/name> \
+  --expect-review-of head --trigger-comment '<comment url>' \
+  --timeout 1800 --interval 30
+```
+
+Bugbot's channels differ from Codex's. Findings arrive as a PR review from
+`cursor[bot]` with inline threads, which phase 6 handles like any other. A
+clean round posts either nothing or a body-only "found no new issues" review;
+neither is the signal. The signal is the `Cursor Bugbot` check run on the head
+commit, and `wait` ends with `external-reviewer-check` when it completes.
+`external_attestations` then carries one `kind: check` entry whose `grade` is
+`clean` (conclusion `success`), `unclear` (it reviewed and left threads), or
+`failed` (usage limit, internal error, cancelled). A check run cannot be typed
+by hand, so it needs no signature allowance; the `cursor[bot]` login is shared
+with Cursor's cloud agents, so no comment text under it ever grades clean. A
+`clean` check also retires any earlier Bugbot review of the same head, so a
+round whose findings were all answered without a new commit can still
+converge. On `failed`, the verdict is `unreviewed` and `detail` says why:
+re-post the trigger once, and if it fails again stop and report it, as with a
+`cursor_review.py` exit 3.
+
+Reviewers other than these: known bots (coderabbit, gemini, copilot) and any
+`[bot]` account also wake the wait but never grade clean on their own; extend
 recognition with `--reviewer-bot` or a full `--attest-profile`.
 
 For `local` and `cursor`, the review is already posted, so read the state —
@@ -232,10 +305,12 @@ python3 <skill>/scripts/pr_watch.py state <number> --repo <owner/name> \
 ```
 
 The signature is required by default, so nothing extra to pass here. An
-external reviewer signs its own way, which is why the `codex` command above
-carries `--allow-unsigned`; never add that flag on the `local` or `cursor`
-paths, as it removes the only thing separating an automated review from a typed
-comment. Both of those post through `pr_review.py`, so both are already signed.
+external reviewer that answers in text signs its own way, which is why the
+`codex` command above carries `--allow-unsigned`; never add that flag on the
+`local` or `cursor` paths, as it removes the only thing separating an automated
+review from a typed comment. Both of those post through `pr_review.py`, so both
+are already signed — the marker is a hidden HTML comment, so its absence from
+the rendered page means nothing.
 
 Both print one JSON object. The fields that drive the decision:
 
@@ -277,6 +352,7 @@ Unresolved conversations decide on their own. The newest review body is read
 | `stale` | every review is of an older commit | Re-review the current head |
 | `unclear` | reviewed at head, but some reviewer gave no all-clear | Read `reviews_at_head_without_marker`; never assume clean |
 | `unclear` + "Unverified —" in the body | the reviewer found something severe it could not prove | Settle it: run the stated check, then re-review. Escalate if you cannot run it |
+| `unreviewed` + a `failed` attestation | the external reviewer could not run | Read its `detail`; re-trigger once, then stop and report |
 | `blocked` | changes requested with nothing to rectify | Only the reviewer can clear it — escalate |
 | `unknown` | a GitHub fetch failed, so counts may be short | Never treat as clean; retry or escalate |
 | `draft` | the PR is a draft, so reviewers will skip it | Mark it ready for review |
@@ -297,7 +373,7 @@ over the field when they disagree.
 
 On `timeout`, do not loop blindly. Report that the review has not arrived and
 tell the user the exact command to resume:
-`/forge --pr <number> --reviewer codex`.
+`/forge --pr <number> --reviewer codex` (or `bugbot`).
 
 On `closed`, stop and report.
 
@@ -347,9 +423,10 @@ Every run ends with:
 5. Files changed and the final commit hash on the pushed branch.
 6. Checks run and their results, including anything skipped.
 7. Threads left unresolved and why.
-8. Which reviewer produced the verdict, and whether it was independent of the
-   author. A `clean` from `local` or `cursor` is the author's own agent
-   reporting on the author's own work.
+8. Which reviewer produced the verdict, which model, and whether it was
+   independent of the author. A `clean` from `local` or `cursor` is the
+   author's own agent reporting on the author's own work; `codex` and `bugbot`
+   are outside parties.
 9. The terminal state: ready to merge, escalated, or not converged.
 
 ## References

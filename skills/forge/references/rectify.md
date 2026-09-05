@@ -31,6 +31,17 @@ Fix what the comment identifies. Do not refactor adjacent code, rename beyond
 the fix, or fold in unrelated improvements — a growing diff invalidates the
 review that has already happened and restarts the loop.
 
+The PR body's `## Scope` section is the arbiter. A comment is out of scope when
+acting on it would change no line the diff touches and no acceptance criterion
+depends on it — a request to harden code the change did not alter, a
+pre-existing defect the diff neither caused nor exposed, a feature the issue
+did not ask for. Reject it in one reply that names the section, resolve the
+thread, and record it for a follow-up issue. Do not debate it and do not
+build it.
+
+The boundary never covers a defect the diff introduced or newly made
+reachable, whatever file it lives in. That is in scope by definition; fix it.
+
 If a comment is correct but properly belongs to separate work, say so, record it
 for a follow-up issue, and reject it for this PR.
 

@@ -4,7 +4,8 @@
 Drives cursor-agent over the context `pr_review.py gather` staged, then writes
 `findings.json` and `suspicions.json` in the schema `pr_review.py post` expects.
 This script never posts: the caller posts, so the review carries the same
-signature and URL-verification path as an in-context review.
+signature and URL-verification path as an in-context review. The printed
+`signed_by` is the harness/model label to pass to `pr_review.py post`.
 
 The agent runs read-only (`--mode ask`), so it can read the repository and run
 `git`/`rg` but cannot edit, commit, or touch GitHub.
@@ -27,17 +28,62 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Opus 4.6 at maximum reasoning effort with Max Mode off. Cursor has no
-# `max_mode` parameter — the mode is expressed through `context`, where 200k is
-# the non-Max window and 1m is Max Mode. `--list-models` does not show this base
-# id; it lists only the pre-baked `claude-4.6-opus-*` variants, which are all 1m.
-DEFAULT_MODEL = "claude-opus-4-6[thinking=true,context=200k,effort=max]"
+# Opus 5, extra-high thinking, at its 300k default window. The bracket form is
+# the only way to name the window: every `claude-opus-5-*` id `--list-models`
+# prints is the 1M variant, and since CLI 2026.07.13 a headless --model that
+# names a 1M variant sends Max Mode with it, so those ids really run at 1M.
+# Cursor's parser wants all four parameters for this model; drop one and it
+# rejects the string. Pick another model or tier with --model, and the posted
+# label follows whatever ran.
+DEFAULT_MODEL = "claude-opus-5[thinking=true,context=300k,effort=xhigh,fast=false]"
 
-# Must contain pr_review.py's SIGNATURE, because pr_watch.py requires that exact
-# substring before it will call a review clean. The suffix records which agent
-# and model actually did the reading.
-SIGNATURE = "rehanhaider/pr-review-skill"
-SIGNED_BY = f"{SIGNATURE} · cursor-agent claude-opus-4-6"
+# The label `pr_review.py post --signed-by` renders at the top of the review,
+# as harness/model, so a reader can tell which model read the diff. The machine
+# signature pr_watch.py keys on is added by pr_review.py itself, so nothing
+# here needs to carry it.
+HARNESS = "Cursor"
+
+# Cursor's model ids end in how to run the model, not what it is.
+EFFORT_SUFFIXES = frozenset(
+    {"none", "minimal", "low", "medium", "high", "xhigh", "extra", "max", "fast", "thinking"}
+)
+
+
+def pretty_model(model: str) -> str:
+    """A readable model name from a cursor model id.
+
+    `claude-opus-4-6[thinking=true,context=200k,effort=max]` -> `Opus-4.6`,
+    `gpt-5.6-sol-xhigh` -> `GPT-5.6-Sol`, `cursor-grok-4.6-xhigh-fast` ->
+    `Grok-4.6`. The vendor prefix and the effort/speed suffixes name how the
+    model was run, not which model read the diff, so they are dropped. An id
+    this cannot read passes through unchanged rather than being guessed at.
+    """
+    base = re.sub(r"\[.*\]$", "", model.strip())
+    if not base:
+        return model.strip()
+    tokens = base.split("-")
+    if tokens[0].lower() in ("claude", "cursor") and len(tokens) > 1:
+        tokens = tokens[1:]
+    words: list[str] = []
+    version: list[str] = []
+    for tok in tokens + [""]:
+        if re.fullmatch(r"\d+(?:\.\d+)*", tok):
+            version.append(tok)
+            continue
+        if tok.lower() in EFFORT_SUFFIXES and (words or version):
+            continue
+        if version:
+            words.append(".".join(version))
+            version = []
+        if tok:
+            words.append("GPT" if tok.lower() == "gpt" else tok[:1].upper() + tok[1:])
+    return "-".join(words) if words else base
+
+
+def reviewer_label(model: str) -> str:
+    """What to pass as `--signed-by`: `Cursor/Opus-5` for the default model."""
+    return f"{HARNESS}/{pretty_model(model)}"
+
 
 SEVERITIES = ("P1", "P2", "P3", "P4")
 SIDES = ("RIGHT", "LEFT")
@@ -362,7 +408,7 @@ def main() -> int:
         "suspicions_file": str(suspicions_file),
         "findings_count": len(findings),
         "suspicions_count": len(suspicions),
-        "signed_by": SIGNED_BY,
+        "signed_by": reviewer_label(args.model),
     }, indent=2))
     return 0
 

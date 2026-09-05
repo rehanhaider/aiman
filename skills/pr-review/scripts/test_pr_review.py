@@ -5,6 +5,7 @@ import unittest
 
 from pr_review import (
     PR_URL_RE,
+    SIGNATURE,
     commentable_lines,
     drop_low_priority,
     finding_to_comment,
@@ -199,7 +200,7 @@ class TestRendering(unittest.TestCase):
             {"path": "b", "line": 2, "severity": "P3", "title": "two", "body": "."},
             {"path": "c", "line": 3, "severity": "P3", "title": "three", "body": "."},
         ]
-        body = render_summary("31ded9d53a0123456789", findings, [], None)
+        body = render_summary("31ded9d53a0123456789", findings, [], None, signature=None)
         self.assertEqual(
             body,
             "Reviewed `31ded9d53a` — 3 findings (1 P1, 2 P3).\n",
@@ -207,20 +208,40 @@ class TestRendering(unittest.TestCase):
         self.assertNotIn("Additional findings", body)
 
     def test_summary_zero_findings(self):
-        body = render_summary("abc1234567", [], [], None)
+        body = render_summary("abc1234567", [], [], None, signature=None)
         self.assertEqual(body, "Reviewed `abc1234567` — no new issues found.\n")
 
-    def test_signature_is_a_trailer_not_the_first_line(self):
-        body = render_summary("abc1234567", [], [], "pr-review skill · Claude Opus 5")
-        first, *_ = body.splitlines()
-        self.assertEqual(first, "Reviewed `abc1234567` — no new issues found.")
-        self.assertTrue(body.rstrip().endswith("— pr-review skill · Claude Opus 5"))
-
-    def test_empty_signature_adds_nothing(self):
+    def test_reviewer_note_leads_and_verdict_follows(self):
+        body = render_summary("abc1234567", [], [], "Claude/Opus-5")
         self.assertEqual(
-            render_summary("abc1234567", [], [], ""),
-            "Reviewed `abc1234567` — no new issues found.\n",
+            body,
+            "> [!NOTE]\n"
+            "> 🤖 Reviewed by Claude/Opus-5\n"
+            "\n"
+            "Reviewed `abc1234567` — no new issues found.\n"
+            "\n"
+            f"<!-- {SIGNATURE} -->\n",
         )
+
+    def test_signature_is_hidden_and_present_without_a_reviewer(self):
+        # The marker is what pr_watch.py keys on, so it must not depend on the
+        # caller remembering to name a reviewer.
+        body = render_summary("abc1234567", [], [], None)
+        self.assertEqual(
+            body,
+            f"Reviewed `abc1234567` — no new issues found.\n\n<!-- {SIGNATURE} -->\n",
+        )
+
+    def test_blank_reviewer_adds_no_note(self):
+        self.assertNotIn("[!NOTE]", render_summary("abc1234567", [], [], "   "))
+
+    def test_reviewer_note_never_displaces_the_verdict_for_findings(self):
+        findings = [{"path": "a", "line": 1, "severity": "P1", "title": "one", "body": "."}]
+        body = render_summary("abc1234567", findings, [], "Cursor/Grok-4.7")
+        lines = body.splitlines()
+        self.assertEqual(lines[:3], ["> [!NOTE]", "> 🤖 Reviewed by Cursor/Grok-4.7", ""])
+        self.assertEqual(lines[3], "Reviewed `abc1234567` — 1 finding (1 P1).")
+        self.assertEqual(lines[-1], f"<!-- {SIGNATURE} -->")
 
     def test_summary_folds_only_finding_titles(self):
         folded = [{"path": "x.py", "line": 7, "severity": "P4", "title": "Tidy the thing", "body": "."}]

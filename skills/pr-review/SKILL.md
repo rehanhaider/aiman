@@ -87,10 +87,12 @@ Hand steps 2–7 to `cursor-agent` and pick this up again at step 8:
 python3 <skill>/scripts/cursor_review.py --workdir <workdir>
 ```
 
-It runs Opus 4.6 at maximum effort with Max Mode off, read-only, over the
-context gathered above — this same method is its prompt. It writes
-`findings.json` and `suspicions.json` into the workdir in the schema step 8
-validates, and prints a summary naming the signature to post under.
+It runs Opus 5 with extra-high thinking at the 300k window unless `--model`
+says otherwise, read-only, over the context gathered above — this same method
+is its prompt.
+It writes `findings.json` and `suspicions.json` into the workdir in the schema
+step 8 validates, and prints a summary whose `signed_by` is the harness/model
+label to post under (`Cursor/Opus-5` for the default model).
 
 Exit 3 means the agent said it could not complete the review. **That is not an
 empty review.** Re-run it, or fall back to `--reviewer local` and read the diff
@@ -107,7 +109,10 @@ from a subprocess does not exempt it from the admission criteria in step 4.
 Before judging code:
 
 1. Read repository instructions such as `AGENTS.md` or `CLAUDE.md`.
-2. Read the PR title, body, linked issue, and acceptance criteria.
+2. Read the PR title, body, linked issue, and acceptance criteria. When the
+   body has a `## Scope` section, its two lists are the review boundary: what
+   the change promises, and what it deliberately leaves alone. Note both; step
+   4 judges candidates against them.
 3. Read existing threads. Do not duplicate an unresolved finding. Re-raise a
    resolved finding only when the defect still exists at the reviewed SHA.
 4. Read the full diff, then the surrounding implementation, callers, callees,
@@ -271,6 +276,14 @@ these hold:
    lives in an unchanged file, anchor on the changed line that exposed it and
    name the real location in the body. That the bad line sits outside the diff
    tells you where to anchor, never whether to report.
+6. **Inside the boundary:** when the PR body carries a `## Scope` section, a
+   candidate is out of scope if acting on it would change no line the diff
+   touches and no listed acceptance criterion depends on it — hardening the
+   change never claimed, a pre-existing defect the diff neither caused nor
+   exposed, a feature the issue did not ask for. Drop it with the ledger reason
+   `out-of-scope`. The boundary never covers a defect the diff introduces or
+   newly makes reachable, whatever file it lives in: criterion 1 already made
+   that in scope, and an "out of scope" list cannot take it back out.
 
 **These criteria are not a second severity filter.** They ask whether there is a
 finding at all, not whether it is worth anyone's time — step 5 decides that, and
@@ -439,20 +452,19 @@ post. Use `--allow-moved-head` only when the findings provably still apply.
 If the PR moved or posting failed, do not silently lose the work: report the
 findings with `path:line` and the reason posting was skipped.
 
-Sign the review with the model that actually read the diff, so a reader can tell
-which one did:
+`--signed-by` is required and names who read the diff, as harness/model, so a
+reader can tell which one did:
 
 ```bash
---signed-by 'rehanhaider/pr-review-skill · <your model>'          # --reviewer local
---signed-by 'rehanhaider/pr-review-skill · cursor-agent claude-opus-4-6'   # --reviewer cursor
+--signed-by 'Claude/<the model running this session, e.g. Opus-5>'   # --reviewer local
+--signed-by '<the signed_by that cursor_review.py printed>'          # --reviewer cursor
 ```
 
-The `rehanhaider/pr-review-skill` part is load-bearing, not branding:
-`forge`'s watcher refuses to call a pull request clean unless the review
-body contains that exact string, so a `--signed-by` value that replaces it
-instead of extending it leaves an automated loop stuck forever on a PR that is
-actually fine. Add the model as a suffix; never substitute it. Omitting
-`--signed-by` entirely is safe — the default is the bare signature.
+`post` renders it as a note at the top of the review — `🤖 Reviewed by
+Claude/Opus-5` — and adds the hidden marker `forge`'s watcher keys on as an
+HTML comment on its own, whatever the label says. So the label is a record,
+not a mechanism: name the model that actually ran, and nothing else about it
+can jam the loop.
 
 On success `post` prints the review's URL. Hand it back to the caller — for
 automation it is the proof that this specific review landed.

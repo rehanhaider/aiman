@@ -6,12 +6,13 @@ import json
 import unittest
 
 from cursor_review import (
-    SIGNATURE,
-    SIGNED_BY,
+    DEFAULT_MODEL,
     agent_result,
     coerce_line,
     extract_object,
     normalise,
+    pretty_model,
+    reviewer_label,
 )
 
 
@@ -154,16 +155,50 @@ class TestCoerceLine(unittest.TestCase):
             self.assertIsNone(coerce_line(value))
 
 
-class TestSignature(unittest.TestCase):
-    def test_signature_carries_the_string_pr_watch_requires(self):
-        # pr_watch.py refuses a clean verdict unless the review body contains
-        # this substring, so a cursor review that signed only as itself would
-        # never converge.
-        self.assertIn(SIGNATURE, SIGNED_BY)
+class TestReviewerLabel(unittest.TestCase):
+    def test_default_model_reads_as_harness_slash_model(self):
+        self.assertEqual(reviewer_label(DEFAULT_MODEL), "Cursor/Opus-5")
 
-    def test_signature_names_the_agent_and_model(self):
-        self.assertIn("cursor-agent", SIGNED_BY)
-        self.assertIn("claude-opus-4-6", SIGNED_BY)
+    def test_default_model_pins_the_300k_window(self):
+        # The plain `claude-opus-5-thinking-xhigh` id is the 1M variant; the
+        # window is only selectable through the bracket parameters.
+        self.assertIn("context=300k", DEFAULT_MODEL)
+        self.assertIn("effort=xhigh", DEFAULT_MODEL)
+
+    def test_label_follows_a_model_override(self):
+        # The label must come from the model that ran, not from a constant:
+        # a review by another model signed as Opus would be a false record.
+        self.assertEqual(reviewer_label("grok-4-7"), "Cursor/Grok-4.7")
+        self.assertEqual(reviewer_label("gpt-5.1-codex[effort=high]"), "Cursor/GPT-5.1-Codex")
+
+    def test_bracket_parameters_never_reach_the_label(self):
+        self.assertNotIn("[", reviewer_label(DEFAULT_MODEL))
+        self.assertNotIn("thinking", reviewer_label(DEFAULT_MODEL))
+
+    def test_pretty_model_examples(self):
+        for raw, pretty in (
+            ("claude-opus-5", "Opus-5"),
+            ("claude-sonnet-4-5", "Sonnet-4.5"),
+            ("gemini-2.5-pro", "Gemini-2.5-Pro"),
+            ("composer-1", "Composer-1"),
+            ("grok-4.7", "Grok-4.7"),
+            # Real ids from `cursor-agent --list-models`.
+            ("gpt-5.6-sol-xhigh", "GPT-5.6-Sol"),
+            ("gpt-5.3-codex-xhigh-fast", "GPT-5.3-Codex"),
+            ("cursor-grok-4.6-xhigh", "Grok-4.6"),
+            ("claude-opus-5-thinking-max-fast", "Opus-5"),
+            ("gemini-3.7-flash-high", "Gemini-3.7-Flash"),
+            ("composer-2.5-fast", "Composer-2.5"),
+            ("gpt-5.5-extra-high-fast", "GPT-5.5"),
+            ("gemini-3.6-flash-minimal", "Gemini-3.6-Flash"),
+            ("gpt-5.6-terra-none", "GPT-5.6-Terra"),
+        ):
+            with self.subTest(raw=raw):
+                self.assertEqual(pretty_model(raw), pretty)
+
+    def test_unreadable_id_passes_through(self):
+        self.assertEqual(pretty_model("  "), "")
+        self.assertEqual(pretty_model("x"), "X")
 
 
 if __name__ == "__main__":
