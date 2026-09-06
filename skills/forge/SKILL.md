@@ -58,11 +58,11 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
   description. Omit it when resuming an existing PR.
 - `--reviewer` — who reads the diff:
 
-  | Mode | Reviewer | Independent of the author? |
-  | --- | --- | --- |
-  | `local` (default) | the `pr-review` skill, in this context | No — same model, same context, same account |
-  | `cursor` | `cursor-agent` running the same method, out of process | In judgement, yes; the review still posts under your account |
-  | `codex` | `@codex` on GitHub | Yes, in judgement and identity |
+  | Mode | Reviewer |
+  | --- | --- |
+  | `local` (default) | the `pr-review` skill, run by a subagent started with fresh context |
+  | `cursor` | `cursor-agent` running the same method, out of process |
+  | `codex` | `@codex` on GitHub |
 
   One reviewer per run. Every posted review from `local` or `cursor` opens
   with a note naming who read the diff, as harness/model — `Claude/Opus-5`,
@@ -185,16 +185,31 @@ newly exposed is in scope by definition.
 
 ## 4. Trigger a review
 
-**`local`** — invoke the `pr-review` skill against this PR. It posts its outcome
-to GitHub, which is what the next phase reads. Review the diff as unfamiliar
-code; run it in a fresh context or subagent where the harness allows, since the
-author of a change is the worst judge of it.
+**`local`** — start a subagent with fresh context and have it run the
+`pr-review` skill against this PR. Use the Agent tool with a general-purpose
+agent, never a fork: a fork inherits this conversation, and the reviewer must
+begin with no memory of writing the code. Do not read the diff in this context,
+and do not review it here if the subagent fails; start another subagent.
+
+Give the subagent:
+
+- the repository and PR number;
+- the path to the `pr-review` skill, to follow end to end including the post;
+- the label to sign with, `Claude/<the model running this session, e.g.
+  Opus-5>`;
+- the instruction to return the review URL that `pr_review.py post` prints,
+  or the exit code and reason when the post did not land.
+
+Its last command is the post:
 
 ```bash
 python3 <pr-review>/scripts/pr_review.py post --workdir <workdir> \
   --findings-file findings.json \
   --signed-by 'Claude/<the model running this session, e.g. Opus-5>'
 ```
+
+The subagent posts its outcome to GitHub, which is what the next phase reads.
+A return without a review URL is no review at all.
 
 **`cursor`** — invoke the `pr-review` skill with `--reviewer cursor`. It runs the
 same method through `cursor-agent`, out of process and read-only, then posts
@@ -226,18 +241,10 @@ read the diff; a review signed as a model that did not run is a false record.
 Keep the review URL that `post` prints on success — phase 5 uses it to prove
 this specific review landed.
 
-> **Neither local nor cursor is an independent attestation.** Both post under
-> the GitHub account that authored the PR, so a clean result means "an agent
-> working for the author found nothing", not that an outside reviewer agreed.
-> `cursor` at least buys a different model reading with no memory of writing the
-> code; `local` does not even buy that. Say which one ran in the final report.
-> `codex` is the genuinely independent path; prefer it when the change touches
-> security, data, or money.
-
-If `pr_review.py post` exits 3, the head moved while the review was being
-written. Do not retry the post — review the new head from the beginning. After
-two consecutive head moves, stop and tell the user something keeps pushing to
-the branch.
+If `pr_review.py post` exits 3, whether the subagent reports it or `cursor`
+hits it, the head moved while the review was being written. Do not retry the
+post — review the new head from the beginning. After two consecutive head
+moves, stop and tell the user something keeps pushing to the branch.
 
 **`codex`** — post the trigger comment and hand off:
 
@@ -410,10 +417,7 @@ Every run ends with:
 5. Files changed and the final commit hash on the pushed branch.
 6. Checks run and their results, including anything skipped.
 7. Threads left unresolved and why.
-8. Which reviewer produced the verdict, which model, and whether it was
-   independent of the author. A `clean` from `local` or `cursor` is the
-   author's own agent reporting on the author's own work; `codex` is an
-   outside party.
+8. Which reviewer produced the verdict and which model read the diff.
 9. The terminal state: ready to merge, escalated, or not converged.
 
 ## References
