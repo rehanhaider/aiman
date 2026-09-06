@@ -339,29 +339,15 @@ def is_author_reply_shell(review: dict, pr_author: str | None) -> bool:
 # commit `<sha>`") or with only a +1 reaction on the trigger comment; only its
 # has-findings round arrives as a real PR review. A profile names the login,
 # how its text anchors the reviewed commit, and the exact all-clear line.
-# Only a profile with both sha_re and clean_re — or a check_name — can ever
-# grade clean; every other recognized reviewer response wakes the wait and
-# grades unclear, which forces a read instead of a silent pass.
+# Only a profile with both sha_re and clean_re can ever grade clean; every
+# other recognized reviewer response wakes the wait and grades unclear, which
+# forces a read instead of a silent pass.
 EXTERNAL_REVIEWER_PROFILES: list[dict[str, str]] = [
     {
         "name": "codex",
         "login_re": r"^chatgpt-codex-connector(\[bot\])?$",
         "sha_re": r"reviewed commit:?[\s*]*`?([0-9a-f]{7,40})`?",
         "clean_re": r"^codex review: didn'?t find any major issues",
-    },
-    # Cursor Bugbot. Findings arrive as a PR review with inline threads, which
-    # the unresolved-thread rule grades on its own. A clean round may post
-    # nothing at all: the signal is the `Cursor Bugbot` check run on the head
-    # commit, conclusion `success` ("no issues, nothing unresolved" in Cursor's
-    # docs). The `cursor[bot]` login is shared with Cursor's cloud agents, so
-    # no comment text under it may grade clean — only the check run can.
-    {
-        "name": "cursor-bugbot",
-        "login_re": r"^cursor(\[bot\])?$",
-        "check_name": "Cursor Bugbot",
-        "check_app": "cursor",
-        "check_reviewed_re": r"completed review",
-        "failed_re": r"bugbot couldn'?t run|bugbot failed to run",
     },
     # Recognized so their responses wake `wait` and force an explicit read;
     # never auto-clean, because their all-clear formats are unverified here.
@@ -432,12 +418,6 @@ def comment_attestation(
         "sha": None,
         "grade": "unclear",
     }
-    failed_re = profile.get("failed_re")
-    if failed_re and re.search(failed_re, body, re.IGNORECASE):
-        # "Bugbot couldn't run - usage limit reached": nothing was reviewed,
-        # so this must not read as a reviewer speaking of the head.
-        attestation["grade"] = "failed"
-        return attestation
     sha_re = profile.get("sha_re")
     if sha_re:
         match = re.search(sha_re, body, re.IGNORECASE)
@@ -569,160 +549,39 @@ def reaction_attestation(
     """A recognized reviewer's +1 on the trigger comment — codex's documented
     no-findings reply when it posts nothing at all. Valid only when the trigger
     was posted after the head commit existed, so the ask it answers is this
-    head and not an earlier one."""
+    head and not an earlier one. Only a profile that can attest clean in text
+    (one with clean_re) can attest clean here; a +1 from any other bot wakes
+    the wait and grades unclear, so a read happens instead of a silent pass."""
     if trigger is None or trigger.get("id") is None:
         return None
+    candidates = []
     for reaction in fetch_reactions(repo, trigger["id"]):
         profile = profile_for(reaction.get("author"), profiles)
-        if profile is None or reaction.get("content") != "+1":
-            continue
-        committed = head_committed_at(repo, head_sha)
-        anchored = bool(committed and (trigger.get("created_at") or "") > committed)
-        if anchored:
-            grade = "clean" if signature is None else "unsigned"
-        else:
-            grade = "unanchored"
-        return {
-            "kind": "reaction",
-            "author": reaction.get("author"),
-            "reviewer": profile.get("name"),
-            "sha": head_sha.lower() if anchored else None,
-            "grade": grade,
-            "trigger_comment": trigger.get("url"),
-            "created_at": reaction.get("created_at"),
-        }
-    return None
-
-
-def fetch_check_runs(repo: str, sha: str, check_name: str) -> list[dict]:
-    raw = gh_json_lines(
-        [
-            "api",
-            "--method",
-            "GET",
-            f"repos/{repo}/commits/{sha}/check-runs",
-            "-f",
-            f"check_name={check_name}",
-            "--paginate",
-            "--jq",
-            ".check_runs[]",
-        ]
+        if profile is not None and reaction.get("content") == "+1":
+            candidates.append((reaction, profile))
+    if not candidates:
+        return None
+    # A reviewer that can attest clean outranks a stray bot's thumbs-up.
+    reaction, profile = next(
+        ((r, p) for r, p in candidates if p.get("clean_re")), candidates[0]
     )
-    return [
-        {
-            "id": r.get("id"),
-            "name": r.get("name"),
-            "app": (r.get("app") or {}).get("slug"),
-            "status": r.get("status"),
-            "conclusion": r.get("conclusion"),
-            "started_at": r.get("started_at"),
-            "completed_at": r.get("completed_at"),
-            "url": r.get("html_url") or r.get("details_url"),
-            "summary": (r.get("output") or {}).get("summary") or "",
-        }
-        for r in raw
-    ]
-
-
-def latest_check_run(
-    repo: str, sha: str, profile: dict[str, str]
-) -> dict | None:
-    """The newest run of the profile's check on this commit, if any."""
-    name = profile.get("check_name")
-    if not name:
-        return None
-    app = profile.get("check_app")
-    runs = [
-        r
-        for r in fetch_check_runs(repo, sha, name)
-        if r.get("name") == name and (not app or r.get("app") == app)
-    ]
-    if not runs:
-        return None
-    return max(runs, key=lambda r: (r.get("started_at") or "", r.get("id") or 0))
-
-
-def check_result_line(summary: str) -> str:
-    """The one line of a check summary worth surfacing: the reviewer's own
-    "Result:" line when it has one, else the last non-empty line."""
-    lines = [ln.strip().replace("**", "") for ln in summary.splitlines() if ln.strip()]
-    for line in lines:
-        if re.search(r"\bresult\s*:", line, re.IGNORECASE):
-            return line
-    return lines[-1] if lines else ""
-
-
-def grade_check_run(run: dict, profile: dict[str, str]) -> str:
-    """Grade a reviewer's check run on the head commit.
-
-    `success` is the reviewer's documented "no issues, nothing unresolved"
-    state, and a check run cannot be typed by hand, so it grades clean without
-    the signature the text channels need. A completed run whose summary says
-    it reviewed grades unclear — the threads it left decide. Anything else
-    (failed, cancelled, skipped, still running) never reviewed: it grades
-    failed or pending, which the verdict treats as no review at all."""
-    if run.get("status") != "completed":
-        return "pending"
-    if run.get("conclusion") == "success":
-        return "clean"
-    reviewed_re = profile.get("check_reviewed_re")
-    if reviewed_re and re.search(reviewed_re, run.get("summary") or "", re.IGNORECASE):
-        return "unclear"
-    if not reviewed_re and run.get("conclusion") in ("neutral", "failure", "action_required"):
-        return "unclear"
-    return "failed"
-
-
-def check_attestation(
-    repo: str, head_sha: str, profile: dict[str, str]
-) -> dict | None:
-    """A reviewer's check run on the head commit as a review-equivalent. Check
-    runs are per-commit, so the SHA anchoring the text channels must prove
-    comes free."""
-    run = latest_check_run(repo, head_sha, profile)
-    if run is None:
-        return None
+    committed = head_committed_at(repo, head_sha)
+    anchored = bool(committed and (trigger.get("created_at") or "") > committed)
+    if not anchored:
+        grade = "unanchored"
+    elif not profile.get("clean_re"):
+        grade = "unclear"
+    else:
+        grade = "clean" if signature is None else "unsigned"
     return {
-        "kind": "check",
-        "author": f"{run['app']}[bot]" if run.get("app") else None,
+        "kind": "reaction",
+        "author": reaction.get("author"),
         "reviewer": profile.get("name"),
-        "check": run.get("name"),
-        "url": run.get("url"),
-        "created_at": run.get("completed_at") or run.get("started_at"),
-        "sha": head_sha.lower(),
-        "status": run.get("status"),
-        "conclusion": run.get("conclusion"),
-        "detail": check_result_line(run.get("summary") or ""),
-        "grade": grade_check_run(run, profile),
+        "sha": head_sha.lower() if anchored else None,
+        "grade": grade,
+        "trigger_comment": trigger.get("url"),
+        "created_at": reaction.get("created_at"),
     }
-
-
-def superseded_by_check(reviews: list[dict], attestations: list[dict]) -> list[dict]:
-    """Drop reviews that a later clean check run by the same login supersedes.
-
-    Bugbot's `success` is documented as "no issues, and no unresolved Bugbot
-    comments from earlier runs". Once it completes after Bugbot's own findings
-    review of this same head — every thread since answered — that review is
-    no longer its position, and holding the head to it would jam the loop on
-    `unclear` with nothing left to rectify. A clean round may also post a
-    body-only "found no new issues" review in the same second the check
-    completes, so a review submitted up to and including the completion time
-    is covered. Only a check run can supersede, and only for its own login."""
-    checks = [
-        a
-        for a in attestations
-        if a.get("kind") == "check" and a.get("grade") == "clean" and a.get("author")
-    ]
-    kept = []
-    for review in reviews:
-        submitted = review.get("submitted_at") or ""
-        if any(
-            c["author"] == review.get("author") and (c.get("created_at") or "") >= submitted
-            for c in checks
-        ):
-            continue
-        kept.append(review)
-    return kept
 
 
 def reviews_missing_marker(
@@ -776,12 +635,7 @@ def verdict_for(
         # Nothing to rectify, and only the reviewer can clear the decision.
         return "blocked"
 
-    # A reviewer that could not run, or has not finished, said nothing about
-    # this head. Dropping those here is what turns "Bugbot hit its usage
-    # limit" into `unreviewed` rather than a verdict about the code.
-    attestations = [
-        a for a in attestations or [] if a.get("grade") not in ("failed", "pending")
-    ]
+    attestations = attestations or []
     reviews = [
         r for r in snapshot["reviews"] if not is_author_reply_shell(r, pr_author)
     ]
@@ -804,7 +658,6 @@ def verdict_for(
         # work we asked for did not happen.
         return "unreviewed"
 
-    at_head = superseded_by_check(at_head, at_head_attestations)
     if reviews_missing_marker(at_head, head_sha, required_signature):
         return "unclear"
     if any(a.get("grade") != "clean" for a in at_head_attestations):
@@ -871,10 +724,6 @@ def build_state(
     )
     if from_reaction is not None:
         attestations.append(from_reaction)
-    for profile in profiles:
-        from_check = check_attestation(repo, head_sha, profile)
-        if from_check is not None:
-            attestations.append(from_check)
     shells = [
         r for r in snapshot["reviews"] if is_author_reply_shell(r, pr_author)
     ]
@@ -922,18 +771,12 @@ def build_state(
         "reviews_at_head": len(at_head),
         "reviews_at_head_without_marker": [
             {"author": r.get("author"), "state": r.get("state"), "url": r.get("url")}
-            for r in reviews_missing_marker(
-                superseded_by_check(at_head, attestations_at_head),
-                head_sha,
-                required_signature,
-            )
+            for r in reviews_missing_marker(at_head, head_sha, required_signature)
         ],
         "review_count": len(reviews),
         # Review-equivalents from external reviewers that answer outside the
-        # review channel (codex comments / reactions, the Bugbot check run).
-        # Grades: clean, unsigned (clean text but a signature is required),
-        # unclear, stale, unanchored, failed (the reviewer could not run),
-        # pending (still running).
+        # review channel (codex comments / reactions). Grades: clean, unsigned
+        # (clean text but a signature is required), unclear, stale, unanchored.
         "external_attestations": attestations,
         "attestations_at_head": len(attestations_at_head),
         "author_reply_shell_reviews": len(shells),
@@ -1016,15 +859,6 @@ def cmd_wait(args: argparse.Namespace) -> int:
             (r.get("author"), r.get("content"))
             for r in fetch_reactions(repo, trigger["id"])
         }
-    # Reviewers that answer through a check run (Bugbot). A run already
-    # completed when the wait starts is old news; a run that completes during
-    # the wait — success or not — is the response we are waiting for.
-    check_profiles = [p for p in profiles if p.get("check_name")] if expect_sha else []
-    baseline_checks: set[int | None] = set()
-    for profile in check_profiles:
-        run = latest_check_run(repo, expect_sha, profile)
-        if run is not None and run.get("status") == "completed":
-            baseline_checks.add(run.get("id"))
     note(
         f"watching {repo}#{number} at {pr['headRefOid'][:10]} — "
         f"{len(baseline['reviews'])} reviews, {len(baseline['threads'])} threads; "
@@ -1154,16 +988,6 @@ def cmd_wait(args: argparse.Namespace) -> int:
                     if content in ("+1", "-1") and profile_for(author, profiles):
                         wake_reason = "external-reviewer-reaction"
                         break
-            if wake_reason is None:
-                for profile in check_profiles:
-                    run = latest_check_run(repo, expect_sha, profile)
-                    if (
-                        run is not None
-                        and run.get("status") == "completed"
-                        and run.get("id") not in baseline_checks
-                    ):
-                        wake_reason = "external-reviewer-check"
-                        break
             if wake_reason is None and (
                 fresh_reviews or fresh_threads or fresh_comments
             ):
@@ -1238,8 +1062,7 @@ def main() -> int:
             "--allow-unsigned",
             action="store_true",
             help="accept reviews without the signature; needed for external "
-            "reviewers such as codex, which sign their own way (a check run "
-            "cannot be typed by hand, so bugbot needs no such allowance)",
+            "reviewers such as codex, which sign their own way",
         )
         p.add_argument(
             "--require-review",
@@ -1293,9 +1116,9 @@ def main() -> int:
         "--expect-review-of",
         metavar="SHA",
         help="wake for a review of this commit ('head' for the current head), "
-        "for any recognized external reviewer's comment, for its emoji "
-        "reaction on the trigger comment, or for its check run completing; "
-        "other activity is logged but does not end the wait",
+        "for any recognized external reviewer's comment, or for its emoji "
+        "reaction on the trigger comment; other activity is logged but does "
+        "not end the wait",
     )
     w.set_defaults(func=cmd_wait)
 

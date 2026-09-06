@@ -4,7 +4,7 @@ description: >-
   Take a tracked issue from wherever it lives — Linear, GitHub Issues, or an
   in-repo document — through implementation, a pull request, and a self-driving
   review-and-rectify loop, stopping at a verified ready-to-merge state without
-  merging. The reviewer is local, Cursor, Codex, or Bugbot. Use when the user
+  merging. The reviewer is local, Cursor, or Codex. Use when the user
   asks to ship, land, or implement an issue end to end, to shepherd or babysit
   a pull request through review, to keep resolving review comments until a PR
   is clean, or invokes "/forge" or "/ship-issue". With --tranches, the run
@@ -45,7 +45,7 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
 ## Arguments
 
 ```text
-/forge <issue-ref> [--reviewer local|cursor|codex|bugbot] [--pr <number>] [--cycles <n>] [--tranches]
+/forge <issue-ref> [--reviewer local|cursor|codex] [--pr <number>] [--cycles <n>] [--tranches]
 ```
 
 - `issue-ref` — a Linear key, GitHub issue number, document path, or plain
@@ -57,7 +57,6 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
   | `local` (default) | the `pr-review` skill, in this context | No — same model, same context, same account |
   | `cursor` | `cursor-agent` running the same method, out of process | In judgement, yes; the review still posts under your account |
   | `codex` | `@codex` on GitHub | Yes, in judgement and identity |
-  | `bugbot` | Cursor Bugbot on GitHub, via `@cursor review` | Yes, in judgement and identity |
 
   One reviewer per run. Every posted review from `local` or `cursor` opens
   with a note naming who read the diff, as harness/model — `Claude/Opus-5`,
@@ -166,9 +165,9 @@ Out of scope:
 ```
 
 It is the one thing every reviewer reads: `pr-review` stages it for `local`
-and `cursor`, and Codex and Bugbot read the PR description. A comment that
-asks for work outside it is answered from it (phase 6), so write it as the
-contract you are prepared to hold the review to. It never excuses a defect the
+and `cursor`, and Codex reads the PR description. A comment that asks for
+work outside it is answered from it (phase 6), so write it as the contract
+you are prepared to hold the review to. It never excuses a defect the
 diff introduces: a bug in an "out of scope" file that this change caused or
 newly exposed is in scope by definition.
 
@@ -220,8 +219,8 @@ this specific review landed.
 > working for the author found nothing", not that an outside reviewer agreed.
 > `cursor` at least buys a different model reading with no memory of writing the
 > code; `local` does not even buy that. Say which one ran in the final report.
-> `codex` and `bugbot` are the genuinely independent paths; prefer one of them
-> when the change touches security, data, or money.
+> `codex` is the genuinely independent path; prefer it when the change touches
+> security, data, or money.
 
 If `pr_review.py post` exits 3, the head moved while the review was being
 written. Do not retry the post — review the new head from the beginning. After
@@ -233,17 +232,6 @@ the branch.
 ```bash
 gh pr comment <number> --repo <owner/name> --body '@codex review'
 ```
-
-**`bugbot`** — the same, addressed to Cursor. It must be a standalone PR
-comment; Bugbot ignores the phrase inside a thread reply:
-
-```bash
-gh pr comment <number> --repo <owner/name> --body '@cursor review'
-```
-
-Bugbot skips drafts unless the repository's Cursor settings say otherwise, and
-it reads the PR description, so the `## Scope` section from phase 3 is the only
-boundary it will see.
 
 Never trigger a review against a head that has uncommitted or unpushed changes.
 The review would describe code that no longer exists.
@@ -267,31 +255,7 @@ python3 <skill>/scripts/pr_watch.py wait <number> --repo <owner/name> \
 
 `wake_reason` in the output says which channel ended the wait.
 
-For `bugbot`, block the same way, without `--allow-unsigned`:
-
-```bash
-python3 <skill>/scripts/pr_watch.py wait <number> --repo <owner/name> \
-  --expect-review-of head --trigger-comment '<comment url>' \
-  --timeout 1800 --interval 30
-```
-
-Bugbot's channels differ from Codex's. Findings arrive as a PR review from
-`cursor[bot]` with inline threads, which phase 6 handles like any other. A
-clean round posts either nothing or a body-only "found no new issues" review;
-neither is the signal. The signal is the `Cursor Bugbot` check run on the head
-commit, and `wait` ends with `external-reviewer-check` when it completes.
-`external_attestations` then carries one `kind: check` entry whose `grade` is
-`clean` (conclusion `success`), `unclear` (it reviewed and left threads), or
-`failed` (usage limit, internal error, cancelled). A check run cannot be typed
-by hand, so it needs no signature allowance; the `cursor[bot]` login is shared
-with Cursor's cloud agents, so no comment text under it ever grades clean. A
-`clean` check also retires any earlier Bugbot review of the same head, so a
-round whose findings were all answered without a new commit can still
-converge. On `failed`, the verdict is `unreviewed` and `detail` says why:
-re-post the trigger once, and if it fails again stop and report it, as with a
-`cursor_review.py` exit 3.
-
-Reviewers other than these: known bots (coderabbit, gemini, copilot) and any
+Reviewers other than Codex: known bots (coderabbit, gemini, copilot) and any
 `[bot]` account also wake the wait but never grade clean on their own; extend
 recognition with `--reviewer-bot` or a full `--attest-profile`.
 
@@ -373,7 +337,7 @@ over the field when they disagree.
 
 On `timeout`, do not loop blindly. Report that the review has not arrived and
 tell the user the exact command to resume:
-`/forge --pr <number> --reviewer codex` (or `bugbot`).
+`/forge --pr <number> --reviewer codex`.
 
 On `closed`, stop and report.
 
@@ -425,8 +389,8 @@ Every run ends with:
 7. Threads left unresolved and why.
 8. Which reviewer produced the verdict, which model, and whether it was
    independent of the author. A `clean` from `local` or `cursor` is the
-   author's own agent reporting on the author's own work; `codex` and `bugbot`
-   are outside parties.
+   author's own agent reporting on the author's own work; `codex` is an
+   outside party.
 9. The terminal state: ready to merge, escalated, or not converged.
 
 ## References
