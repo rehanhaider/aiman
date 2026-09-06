@@ -195,8 +195,9 @@ Give the subagent:
 
 - the repository and PR number;
 - the path to the `pr-review` skill, to follow end to end including the post;
-- the label to sign with, `Claude/<the model running this session, e.g.
-  Opus-5>`;
+- the instruction to sign as `Claude/<model>` with the model the subagent
+  itself is running on, `Claude/Opus-5` for example, never a label handed
+  down from here;
 - the instruction to return the review URL that `pr_review.py post` prints,
   or the exit code and reason when the post did not land.
 
@@ -205,7 +206,7 @@ Its last command is the post:
 ```bash
 python3 <pr-review>/scripts/pr_review.py post --workdir <workdir> \
   --findings-file findings.json \
-  --signed-by 'Claude/<the model running this session, e.g. Opus-5>'
+  --signed-by 'Claude/<the model the subagent is running on, e.g. Opus-5>'
 ```
 
 The subagent posts its outcome to GitHub, which is what the next phase reads.

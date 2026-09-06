@@ -73,9 +73,6 @@ value can leave `forge`'s watcher unable to call the pull request clean. The
 watcher skips the leading note before reading the verdict line, so the verdict
 line still has to be exact.
 
-Neither makes the review independent: it is posted by the same GitHub account
-that authored the pull request.
-
 The summary must not contain:
 
 - praise or an explanation of correct code

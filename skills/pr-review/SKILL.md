@@ -45,10 +45,8 @@ requires an authenticated `gh` CLI.
   in this context. `cursor` hands those steps to `cursor-agent` running this
   same method out of process, then returns here for step 8.
 
-Reach for `cursor` when you wrote the code under review, when a second model's
-reading is worth the wall-clock, or when this context is already crowded with
-the implementation you are about to judge. Both modes post identically, so the
-choice is about who does the reading, not about what lands on GitHub.
+Both modes post identically, so the choice is about who does the reading, not
+about what lands on GitHub.
 
 ## 1. Gather the review
 
