@@ -1,7 +1,9 @@
 # Rectifying review comments
 
 A review comment is a hypothesis, not an instruction. Judge each one against
-the requirements and the code, then act on the judgement.
+the requirements and the code, then act on the judgement. Under `--tranches`
+the judgement goes to the user before any action; see the section of that name
+below.
 
 ## Per comment
 
@@ -45,6 +47,36 @@ reachable, whatever file it lives in. That is in scope by definition; fix it.
 If a comment is correct but properly belongs to separate work, say so, record it
 for a follow-up issue, and reject it for this PR.
 
+## Under `--tranches`
+
+Judging is read-only. Do the reading and deciding above for every finding,
+then stop before changing anything. The round has two checkpoints, and the
+turn ends at each one.
+
+**Checkpoint 1: the proposed resolutions.** One row per finding:
+
+| # | Finding | Proposed decision | Proposed change | Why |
+| --- | --- | --- | --- | --- |
+| 1 | `path:line` — one-line gist | accept / partial / reject | what will change, or "nothing" | one sentence, from the requirements |
+
+Rejections and out-of-scope calls are rows too, because the reply that refuses
+them is external state the user has not seen yet. End the turn with one
+question: agree to every row, or name the rows to change. Edit nothing until
+the answer arrives. A correction rewrites that row. Re-check it against the
+other rows, and it holds as a standing constraint for the rest of the run. Then
+ask again. Silence is not agreement.
+
+**Checkpoint 2: the finished fixes.** Apply only the agreed rows, run steps 1
+to 4 of "After the fixes", and end the turn with: the files changed, the checks
+with their results, and each row's outcome against what the user agreed. One
+question: sign off, or name the corrections. Do not commit, push, reply to a
+thread, or resolve one until the sign-off arrives. Fix a correction in the
+uncommitted work, re-check it, and present it again.
+
+**After sign-off**, and only then: commit, push, reply, resolve, and report the
+hash. Return to phase 4 with the new head; the next round starts again at
+checkpoint 1.
+
 ## After the fixes
 
 1. Add or update tests that would fail without the fix.
@@ -55,8 +87,13 @@ for a follow-up issue, and reject it for this PR.
 4. Confirm every accepted comment is fully addressed, not partially.
 5. Commit with a message that names what changed and why. Push to the existing
    PR branch — never force-push over review history unless the user asks.
+   Under `--tranches`, this step waits for the sign-off at checkpoint 2.
 
 ## Replying and resolving
+
+Under `--tranches`, nothing in this section happens before the sign-off at
+checkpoint 2. The replies and the resolved threads are part of what the user
+signed off.
 
 Reply to each thread with a short account of what changed or why nothing did.
 Two or three sentences. No transcripts, no restating the reviewer's comment.
@@ -98,3 +135,6 @@ After every rectification cycle, report a compact table plus the mechanics:
 
 Then: files changed, checks run with their results, threads left unresolved and
 why, the commit hash, and confirmation that the branch was pushed.
+
+Under `--tranches` the table appears twice: as the proposal at checkpoint 1,
+with the decision column marked proposed, and as the result after sign-off.
