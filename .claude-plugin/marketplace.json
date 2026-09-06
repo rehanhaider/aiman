@@ -18,7 +18,7 @@
       "name": "forge",
       "source": "./skills/forge",
       "description": "Take a tracked issue from wherever it lives — Linear, GitHub Issues, or an in-repo document — through implementation, a pull request, and a self-driving review-and-rectify loop, stopping at a verified ready-to-merge state without merging. The reviewer is local, Cursor, or Codex. Use when the user asks to ship, land, or implement an issue end to end, to shepherd or babysit a pull request through review, to keep resolving review comments until a PR is clean, or invokes \"/forge\" or \"/ship-issue\". With --tranches, the run splits the work into an approved plan. Each tranche waits uncommitted for the user's review, and the run fixes what they flag before asking to commit. Review findings get the same gate: the user agrees each proposed resolution before any edit, then signs off the fixes before any commit.",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "category": "productivity"
     },
     {
