@@ -85,12 +85,13 @@ Hand steps 2–7 to `cursor-agent` and pick this up again at step 8:
 python3 <skill>/scripts/cursor_review.py --workdir <workdir>
 ```
 
-It runs Opus 5 with extra-high thinking at the 300k window unless `--model`
-says otherwise, read-only, over the context gathered above — this same method
-is its prompt.
+It uses Cursor's automatic model selection (`--model auto`) unless `--model`
+says otherwise. It runs read-only over the context gathered above, with this
+same method as its prompt.
 It writes `findings.json` and `suspicions.json` into the workdir in the schema
 step 8 validates, and prints a summary whose `signed_by` is the harness/model
-label to post under (`Cursor/Opus-5` for the default model).
+label to post under (`Cursor/Auto` by default). `Auto` names the selection
+mode; it does not identify the underlying model Cursor chose.
 
 Exit 3 means the agent said it could not complete the review. **That is not an
 empty review.** Re-run it, or fall back to `--reviewer local` and read the diff

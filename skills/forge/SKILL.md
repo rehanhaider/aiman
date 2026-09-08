@@ -214,9 +214,10 @@ A return without a review URL is no review at all.
 
 **`cursor`** — invoke the `pr-review` skill with `--reviewer cursor`. It runs the
 same method through `cursor-agent`, out of process and read-only, then posts
-from here as usual. The model is `cursor_review.py`'s default (Opus 5,
-extra-high thinking, 300k window) unless `--model` says otherwise; the label
-it prints as `signed_by` follows whatever model ran. Driven directly:
+from here as usual. It uses automatic model selection (`--model auto`) unless
+`--model` says otherwise. The default `signed_by` label is `Cursor/Auto`,
+which names the selection mode rather than claiming a specific underlying
+model. An explicit model override changes the label. Driven directly:
 
 ```bash
 python3 <pr-review>/scripts/pr_review.py gather <number> --repo <owner/name>
@@ -224,7 +225,7 @@ python3 <pr-review>/scripts/cursor_review.py --workdir <workdir>
 python3 <pr-review>/scripts/pr_review.py post --workdir <workdir> \
   --findings-file <workdir>/findings.json \
   --suspicions-file <workdir>/suspicions.json \
-  --signed-by '<the signed_by value cursor_review.py printed, e.g. Cursor/Opus-5>'
+  --signed-by '<the signed_by value cursor_review.py printed, e.g. Cursor/Auto>'
 ```
 
 Omit `--suspicions-file` when `suspicions.json` is an empty array.

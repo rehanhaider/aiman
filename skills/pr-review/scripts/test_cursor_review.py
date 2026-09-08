@@ -157,13 +157,10 @@ class TestCoerceLine(unittest.TestCase):
 
 class TestReviewerLabel(unittest.TestCase):
     def test_default_model_reads_as_harness_slash_model(self):
-        self.assertEqual(reviewer_label(DEFAULT_MODEL), "Cursor/Opus-5")
+        self.assertEqual(reviewer_label(DEFAULT_MODEL), "Cursor/Auto")
 
-    def test_default_model_pins_the_300k_window(self):
-        # The plain `claude-opus-5-thinking-xhigh` id is the 1M variant; the
-        # window is only selectable through the bracket parameters.
-        self.assertIn("context=300k", DEFAULT_MODEL)
-        self.assertIn("effort=xhigh", DEFAULT_MODEL)
+    def test_default_model_uses_automatic_selection(self):
+        self.assertEqual(DEFAULT_MODEL, "auto")
 
     def test_label_follows_a_model_override(self):
         # The label must come from the model that ran, not from a constant:

@@ -28,14 +28,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Opus 5, extra-high thinking, at its 300k default window. The bracket form is
-# the only way to name the window: every `claude-opus-5-*` id `--list-models`
-# prints is the 1M variant, and since CLI 2026.07.13 a headless --model that
-# names a 1M variant sends Max Mode with it, so those ids really run at 1M.
-# Cursor's parser wants all four parameters for this model; drop one and it
-# rejects the string. Pick another model or tier with --model, and the posted
-# label follows whatever ran.
-DEFAULT_MODEL = "claude-opus-5[thinking=true,context=300k,effort=xhigh,fast=false]"
+# Let Cursor select the model. An explicit --model overrides this default.
+DEFAULT_MODEL = "auto"
 
 # The label `pr_review.py post --signed-by` renders at the top of the review,
 # as harness/model, so a reader can tell which model read the diff. The machine
@@ -81,7 +75,7 @@ def pretty_model(model: str) -> str:
 
 
 def reviewer_label(model: str) -> str:
-    """What to pass as `--signed-by`: `Cursor/Opus-5` for the default model."""
+    """What to pass as `--signed-by`: `Cursor/Auto` for automatic selection."""
     return f"{HARNESS}/{pretty_model(model)}"
 
 
