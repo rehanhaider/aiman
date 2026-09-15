@@ -13,9 +13,30 @@ wants a pinned version.
 | --- | --- |
 | `skills/` | The skill library — one directory per skill, each with a `SKILL.md`. See [skills/README.md](skills/README.md) for the catalog and conventions. |
 | `.claude-plugin/marketplace.json` | The registry: one entry per skill, with its version. Generated from `skills/` by `aiman sync` — don't hand-edit names, sources, or descriptions. |
-| `scripts/` | `skills.ts` — the `aiman` CLI — and `ai-status`, which shows Claude and Codex rate-limit usage on one screen (`ai-status --once` for a single read). |
+| `scripts/` | `skills.ts` — the `aiman` CLI — and `ai-status`, which shows Claude, Codex and Cursor usage on one screen. See [ai-status](#ai-status). |
 | `snapshots/` | The instruction files as deployed — `snapshots/claude/CLAUDE.md` (`~/.claude/CLAUDE.md`) and `snapshots/codex/AGENTS.md` (`~/.codex/AGENTS.md`). |
 | `analysis/` | Working notes the instruction files came out of, e.g. the per-model failure analyses in `analysis/AGENTS/`. |
+
+## ai-status
+
+One screen for the rate limits of all three agents, refreshed every five minutes
+(`ai-status --once` prints it once and exits). Symlink it onto your PATH:
+
+```bash
+ln -s ~/Projects/aiman/scripts/ai-status ~/.local/bin/ai-status
+```
+
+Each section comes from the tool's own CLI, so it needs `claude`, `codex` and
+`cursor-agent` logged in:
+
+- **Claude** — `claude -p /usage`.
+- **Codex** — `codex app-server`, asked for `account/rateLimits/read` over JSON-RPC.
+- **Cursor** — the CLI only reports usage in its interactive `/usage` panel, so the
+  script opens `cursor-agent` in a detached `tmux` session, types `/usage`, reads the
+  pane, and kills the session. This is the one section that requires `tmux`; without
+  it the Cursor block prints its title and nothing else.
+
+Also needs `jq` and GNU `date`.
 
 ## Install the CLI once
 
