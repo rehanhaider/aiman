@@ -88,6 +88,7 @@ Standing constraints already given:
 
 Fable — use strict scope mode:
 - Do not add dependencies, flags, infrastructure, compatibility behavior, publishing actions, or alternative test paths. Before UI completion, inspect the live result. Before any external mutation, confirm that the exact action was authorized.
+- Use Opus 5 @ xhigh reasoning as subagent when you can - however, review the output for correctness.
 
 Opus — use completion-owner mode:
 - Choose the next action when requirements are clear. Do not stop after analysis, partial implementation, a push, or a review request. Maintain a completion checklist and continue until its terminal condition is satisfied.
