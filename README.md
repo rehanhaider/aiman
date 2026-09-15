@@ -13,7 +13,7 @@ wants a pinned version.
 | --- | --- |
 | `skills/` | The skill library — one directory per skill, each with a `SKILL.md`. See [skills/README.md](skills/README.md) for the catalog and conventions. |
 | `.claude-plugin/marketplace.json` | The registry: one entry per skill, with its version. Generated from `skills/` by `aiman sync` — don't hand-edit names, sources, or descriptions. |
-| `scripts/` | `skills.ts` — the `aiman` CLI — and the usage-check scripts under `claude/` and `codex/`. |
+| `scripts/` | `skills.ts` — the `aiman` CLI — and `ai-status`, which shows Claude and Codex rate-limit usage on one screen (`ai-status --once` for a single read). |
 | `snapshots/` | The instruction files as deployed — `snapshots/claude/CLAUDE.md` (`~/.claude/CLAUDE.md`) and `snapshots/codex/AGENTS.md` (`~/.codex/AGENTS.md`). |
 | `analysis/` | Working notes the instruction files came out of, e.g. the per-model failure analyses in `analysis/AGENTS/`. |
 

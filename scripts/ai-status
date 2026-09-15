@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+
+set -o pipefail
+
+usage() {
+    echo "Usage: ai-status [--once]"
+    echo "  --once    Show usage once and exit"
+}
+
+# Live mode is the default. watch redraws the same screen every 5 minutes.
+if [[ $# -eq 0 ]]; then
+    exec env AI_STATUS_COLOR=1 watch -c -n 300 -t -x -- "$0" --once
+fi
+
+if [[ $# -ne 1 || "$1" != "--once" ]]; then
+    usage
+    exit 1
+fi
+
+LABEL_WIDTH=17
+BAR_WIDTH=24
+
+# Colour when writing to a terminal or when watch (which reads a pipe) asked for it.
+if [[ -t 1 || -n "${AI_STATUS_COLOR:-}" ]] && [[ -z "${NO_COLOR:-}" ]]; then
+    RESET=$'\e[0m' BOLD=$'\e[1m' DIM=$'\e[2m'
+    GREEN=$'\e[32m' AMBER=$'\e[33m' RED=$'\e[31m'
+else
+    RESET='' BOLD='' DIM='' GREEN='' AMBER='' RED=''
+fi
+
+# Percent used → colour: comfortable, getting close, nearly out.
+tone() {
+    if (($1 < 50)); then printf '%s' "$GREEN"
+    elif (($1 < 80)); then printf '%s' "$AMBER"
+    else printf '%s' "$RED"
+    fi
+}
+
+# Seconds from now until an epoch → "5d 2h", "1h 48m", "12m".
+time_until() {
+    local secs=$(($1 - $(date +%s)))
+    ((secs < 0)) && secs=0
+    local d=$((secs / 86400)) h=$((secs % 86400 / 3600)) m=$((secs % 3600 / 60))
+    if ((d > 0)); then printf '%dd %dh' "$d" "$h"
+    elif ((h > 0)); then printf '%dh %dm' "$h" "$m"
+    else printf '%dm' "$m"
+    fi
+}
+
+# One limit window: label, coloured bar, percent, reset time, time until reset.
+render_row() {
+    local label="$1" percent="$2" epoch="$3"
+    local filled_cells filled empty label_pad colour when until
+
+    filled_cells=$(((percent * BAR_WIDTH + 50) / 100))
+    printf -v filled '%*s' "$filled_cells" ''
+    printf -v empty '%*s' "$((BAR_WIDTH - filled_cells))" ''
+    filled=${filled// /━}
+    empty=${empty// /─}
+    # bash printf pads by bytes, so "·" would shift the bar; pad by characters instead.
+    printf -v label_pad '%*s' "$((LABEL_WIDTH - ${#label}))" ''
+
+    colour=$(tone "$percent")
+    if [[ "$epoch" =~ ^[0-9]+$ ]]; then
+        when=$(date -d "@$epoch" +'%a %H:%M')
+        until="in $(time_until "$epoch")"
+    else
+        when="$epoch"
+        until=''
+    fi
+
+    printf '  %s%s %s%s%s%s%s  %s%3d%%%s   %s  %s%s%s\n' \
+        "$label" "$label_pad" \
+        "$colour" "$filled" "$DIM" "$empty" "$RESET" \
+        "$BOLD$colour" "$percent" "$RESET" \
+        "$when" "$DIM" "$until" "$RESET"
+}
+
+# A titled block. Rows arrive as TSV on stdin: label, percent, reset epoch.
+# A row whose label is "note" is printed as a dim footnote instead of a bar.
+render_section() {
+    local title="$1"
+    local label percent epoch
+
+    printf '  %s%s%s\n' "$BOLD" "$title" "$RESET"
+    while IFS=$'\t' read -r label percent epoch; do
+        if [[ "$label" == "note" ]]; then
+            printf '  %s%s%s\n' "$DIM" "$percent" "$RESET"
+        elif [[ -n "$label" ]]; then
+            render_row "$label" "$percent" "$epoch"
+        fi
+    done
+    printf '\n'
+}
+
+# "Sep 15, 9:30pm (Asia/Kolkata)" → epoch. Claude omits the year, so a reset that
+# lands past New Year parses into the past; bump it a year when that happens.
+claude_epoch() {
+    local raw="$1" epoch
+    raw=${raw%% (*}
+    raw=${raw//,/}
+    epoch=$(date -d "$raw" +%s 2>/dev/null) || { printf '%s' "$1"; return; }
+    ((epoch < $(date +%s) - 86400)) && epoch=$(date -d "$raw +1 year" +%s)
+    printf '%s' "$epoch"
+}
+
+# Emits one TSV row per Claude limit window, plus a note with recent request volume.
+fetch_claude() {
+    local line label percent resets
+    local limit='^Current (session|week.*): ([0-9]+)% used · resets (.+)$'
+    local recent='^Last 24h · (.+)$'
+
+    claude -p "/usage" |
+        while IFS= read -r line; do
+            if [[ "$line" =~ $recent ]]; then
+                printf 'note\tlast 24h · %s\n' "${BASH_REMATCH[1]}"
+                continue
+            fi
+            [[ "$line" =~ $limit ]] || continue
+            label="${BASH_REMATCH[1]}"
+            percent="${BASH_REMATCH[2]}"
+            resets="${BASH_REMATCH[3]}"
+
+            if [[ "$label" == "session" ]]; then
+                label="Session"
+            elif [[ "$label" =~ ^week\ \((.*)\)$ ]]; then
+                label="Week · ${BASH_REMATCH[1]}"
+            fi
+
+            printf '%s\t%s\t%s\n' "$label" "$percent" "$(claude_epoch "$resets")"
+        done
+}
+
+# Emits one TSV row per Codex limit window, via the app-server JSON-RPC API.
+fetch_codex() {
+    local line
+
+    coproc CODEX { codex app-server 2>/dev/null; }
+    trap '[ -n "${CODEX_PID:-}" ] && kill "$CODEX_PID" 2>/dev/null' RETURN
+
+    send() {
+        printf '%s\n' "$1" >&"${CODEX[1]}"
+    }
+
+    send '{"method":"initialize","id":1,"params":{"clientInfo":{"name":"ai-status","version":"1.0"}}}'
+    while IFS= read -r -u "${CODEX[0]}" line; do
+        jq -e '.id == 1' >/dev/null 2>&1 <<<"$line" && break
+    done
+
+    send '{"method":"initialized"}'
+    send '{"method":"account/rateLimits/read","id":2}'
+
+    while IFS= read -r -u "${CODEX[0]}" line; do
+        jq -e '.id == 2' >/dev/null 2>&1 <<<"$line" || continue
+        jq -r '
+          (.result.rateLimitsByLimitId.codex // .result.rateLimits) as $r |
+          [$r.primary, $r.secondary]
+          | map(select(. != null))
+          | .[]
+          | [
+              (if .windowDurationMins == 300 then "5h"
+               elif .windowDurationMins == 10080 then "Weekly"
+               else "\(.windowDurationMins)m" end),
+              (.usedPercent | tostring),
+              (.resetsAt // "unknown" | tostring)
+            ]
+          | @tsv
+        ' <<<"$line"
+        break
+    done
+}
+
+# Both fetches take a few seconds, so run them side by side and print once both are in.
+claude_rows=$(mktemp)
+codex_rows=$(mktemp)
+trap 'rm -f "$claude_rows" "$codex_rows"' EXIT
+
+fetch_claude >"$claude_rows" &
+fetch_codex >"$codex_rows" &
+wait
+
+printf '\n  %sAI usage%s   %supdated %s%s\n\n' "$BOLD" "$RESET" "$DIM" "$(date +'%a %H:%M')" "$RESET"
+render_section 'Claude' <"$claude_rows"
+render_section 'Codex' <"$codex_rows"
