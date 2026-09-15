@@ -63,17 +63,17 @@ render_row() {
     colour=$(tone "$percent")
     if [[ "$epoch" =~ ^[0-9]+$ ]]; then
         when=$(date -d "@$epoch" +'%a %H:%M')
-        until="in $(time_until "$epoch")"
+        until="  ${DIM}in $(time_until "$epoch")${RESET}"
     else
         when="$epoch"
         until=''
     fi
 
-    printf '  %s%s %s%s%s%s%s  %s%3d%%%s   %s  %s%s%s\n' \
+    printf '  %s%s %s%s%s%s%s  %s%3d%%%s   %s%s\n' \
         "$label" "$label_pad" \
         "$colour" "$filled" "$DIM" "$empty" "$RESET" \
         "$BOLD$colour" "$percent" "$RESET" \
-        "$when" "$DIM" "$until" "$RESET"
+        "$when" "$until"
 }
 
 # A titled block. Rows arrive as TSV on stdin: label, percent, reset epoch.
@@ -104,18 +104,13 @@ claude_epoch() {
     printf '%s' "$epoch"
 }
 
-# Emits one TSV row per Claude limit window, plus a note with recent request volume.
+# Emits one TSV row per Claude limit window.
 fetch_claude() {
     local line label percent resets
     local limit='^Current (session|week.*): ([0-9]+)% used · resets (.+)$'
-    local recent='^Last 24h · (.+)$'
 
     claude -p "/usage" |
         while IFS= read -r line; do
-            if [[ "$line" =~ $recent ]]; then
-                printf 'note\tlast 24h · %s\n' "${BASH_REMATCH[1]}"
-                continue
-            fi
             [[ "$line" =~ $limit ]] || continue
             label="${BASH_REMATCH[1]}"
             percent="${BASH_REMATCH[2]}"
@@ -170,15 +165,51 @@ fetch_codex() {
     done
 }
 
-# Both fetches take a few seconds, so run them side by side and print once both are in.
+# Emits one TSV row per Cursor plan category. The CLI only exposes usage through the
+# interactive /usage panel, so drive it inside a throwaway tmux session and read the pane.
+fetch_cursor() {
+    local session="ai-status-$$" workdir pane line label percent resets tries
+
+    workdir=$(mktemp -d)
+    trap 'tmux -L ai-status kill-session -t "$session" 2>/dev/null; rm -rf "$workdir"' RETURN
+
+    tmux -L ai-status new-session -d -s "$session" -x 100 -y 40 -c "$workdir" 'cursor-agent --trust' || return
+    sleep 6
+    tmux -L ai-status send-keys -t "$session" '/usage'
+    sleep 2
+    tmux -L ai-status send-keys -t "$session" Enter
+
+    for ((tries = 0; tries < 30; tries++)); do
+        sleep 1
+        pane=$(tmux -L ai-status capture-pane -t "$session" -p 2>/dev/null) || return
+        [[ "$pane" == *"Usage • "* ]] && break
+    done
+    [[ "$pane" == *"Usage • "* ]] || return
+
+    resets=$(sed -nE 's/.*Resets ([A-Za-z]+ [0-9]+).*/\1/p' <<<"$pane" | head -1)
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^\ *(Included|Auto|API)\ +([0-9]+)%\ used ]]; then
+            label="${BASH_REMATCH[1]}"
+            percent="${BASH_REMATCH[2]}"
+            printf '%s\t%s\t%s\n' "$label" "$percent" "${resets:-unknown}"
+        elif [[ "$line" =~ ^\ *On-demand\ usage\ is\ (on|off) ]]; then
+            printf 'note\ton-demand usage %s\n' "${BASH_REMATCH[1]}"
+        fi
+    done <<<"$pane"
+}
+
+# Each fetch takes a few seconds, so run them side by side and print once all are in.
 claude_rows=$(mktemp)
 codex_rows=$(mktemp)
-trap 'rm -f "$claude_rows" "$codex_rows"' EXIT
+cursor_rows=$(mktemp)
+trap 'rm -f "$claude_rows" "$codex_rows" "$cursor_rows"' EXIT
 
 fetch_claude >"$claude_rows" &
 fetch_codex >"$codex_rows" &
+fetch_cursor >"$cursor_rows" &
 wait
 
 printf '\n  %sAI usage%s   %supdated %s%s\n\n' "$BOLD" "$RESET" "$DIM" "$(date +'%a %H:%M')" "$RESET"
 render_section 'Claude' <"$claude_rows"
 render_section 'Codex' <"$codex_rows"
+render_section 'Cursor' <"$cursor_rows"
