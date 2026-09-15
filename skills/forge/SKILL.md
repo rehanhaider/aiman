@@ -7,7 +7,7 @@ description: >-
   merging. The reviewer is local, Cursor, or Codex. Use when the user
   asks to ship, land, or implement an issue end to end, to shepherd or babysit
   a pull request through review, to keep resolving review comments until a PR
-  is clean, or invokes "/forge" or "/ship-issue". With --tranches, the run
+  is clean, or invokes "/forge" or "/ship-issue". With --hitl, the run
   splits the work into an approved plan. Each tranche waits uncommitted for
   the user's review, and the run fixes what they flag before asking to commit.
   Review findings get the same gate: the user agrees each proposed resolution
@@ -18,7 +18,7 @@ description: >-
 
 Own one issue from its tracker to a pull request that a fresh review reports as
 clean, then hand it back. One invocation covers every cycle; the user should not
-have to re-prompt between review rounds. Under `--tranches` the opposite is the
+have to re-prompt between review rounds. Under `--hitl` the opposite is the
 contract: the run pauses at every checkpoint and waits for feedback, in the
 review rounds as much as in the build.
 
@@ -34,14 +34,14 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
    responsible until the loop terminates or a stop condition fires.
    Keep going while each round makes progress. Rounds are not rationed — a
    review that keeps finding real defects is the loop working, not failing.
-   Under `--tranches`, a checkpoint stop is this invariant working, not
+   Under `--hitl`, a checkpoint stop is this invariant working, not
    breaking it: the stop is scheduled, announced, and hands back on purpose.
 3. **Never close the issue.** Advance its status to in-review at most.
 4. **Stay inside the issue's scope.** Unrelated improvements belong to other
    issues, however tempting.
 5. **Report honestly.** A skipped check, an unreviewed area, or an unresolved
    thread goes in the final report in plain words.
-6. **Under `--tranches`, never cross a checkpoint.** The checkpoints are the
+6. **Under `--hitl`, never cross a checkpoint.** The checkpoints are the
    plan, before any code; each tranche, before its commit and push and before
    the next tranche begins; and two stops in every review round. Those two are
    the proposed resolutions, before any edit, and the finished fixes, before
@@ -51,7 +51,7 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
 ## Arguments
 
 ```text
-/forge <issue-ref> [--reviewer local|cursor|codex] [--pr <number>] [--cycles <n>] [--tranches]
+/forge <issue-ref> [--reviewer local|cursor|codex] [--pr <number>] [--cycles <n>] [--hitl]
 ```
 
 - `issue-ref` — a Linear key, GitHub issue number, document path, or plain
@@ -71,11 +71,11 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
 - `--pr` — resume the loop on an existing PR and skip implementation.
 - `--cycles` — hard cap on rectification rounds. Unset by default: the loop runs
   until it converges or stalls, not until a counter expires.
-- `--tranches` — plan first, then gate: split the work into tranches, get the
-  plan approved before any code, and keep each tranche uncommitted until the
-  user reviews and confirms it. Once the PR is under review, every round stops
-  twice more: the proposed resolutions before any edit, and the fixes before
-  any commit. See phases 2a and 6.
+- `--hitl` — human in the loop. Plan first, then gate: split the work into
+  tranches, get the plan approved before any code, and keep each tranche
+  uncommitted until the user reviews and confirms it. Once the PR is under
+  review, every round stops twice more: the proposed resolutions before any
+  edit, and the fixes before any commit. See phases 2a and 6.
 
 In the commands below, `<skill>` is the directory containing this file.
 
@@ -83,7 +83,7 @@ In the commands below, `<skill>` is the directory containing this file.
 
 If `--pr` is given, or the current branch already has an open PR, announce that
 you are resuming. A tranche checklist on the issue or in the PR body, ticked or
-not, means the run is under `--tranches` even if the flag was not passed
+not, means the run is under `--hitl` even if the flag was not passed
 again; say so. When that checklist has an unchecked tranche (phase 2a), continue
 there; otherwise skip to phase 4, still gated.
 
@@ -114,7 +114,7 @@ Then, using the repository's own commands:
 
 Do not proceed to a PR with a failing gate. Fix it, or stop and report it.
 
-## 2a. Tranches (`--tranches` only)
+## 2a. Tranches (`--hitl` only)
 
 Without the flag, skip this section.
 
@@ -154,7 +154,7 @@ phase 6, and the final tranche's approval does not pre-approve any of them.
 
 Push the branch and open a PR that is **ready for review, not a draft** —
 external reviewers ignore drafts, which stalls the loop silently. (Under
-`--tranches` the PR is deliberately a draft until the final tranche is
+`--hitl` the PR is deliberately a draft until the final tranche is
 approved — phase 2a.)
 
 The body carries the issue reference, a summary of the implementation, each
@@ -369,7 +369,7 @@ through [references/rectify.md](references/rectify.md): judge each comment
 against the requirements, fix what is justified, refuse what is not, test, reply
 to every thread, resolve the ones genuinely addressed, commit, and push.
 
-**Under `--tranches`, the round stops twice.** The section of the same name in
+**Under `--hitl`, the round stops twice.** The section of the same name in
 [rectify.md](references/rectify.md) says what each stop contains. First,
 before touching a file: one row per finding with the proposed decision, the
 proposed change, and the reason, then one question. Edit nothing until the
@@ -393,7 +393,7 @@ Stop and report when any of these fires:
 | `verdict` is `unreviewed`, `stale`, or `unclear` after a cycle | Say which, and that the PR is *not* confirmed clean |
 | **Stalled** — a round ends with the same unresolved threads it started with, or a finding you already rectified comes back unchanged twice | Repeating the round will not help. Hand back with what is stuck and why |
 | `--cycles` given and reached | Only when the user asked for a cap |
-| A `--tranches` checkpoint is reached | Report the tranche, the proposed resolutions, or the uncommitted fixes, then wait — a scheduled stop, not a failure |
+| A `--hitl` checkpoint is reached | Report the tranche, the proposed resolutions, or the uncommitted fixes, then wait — a scheduled stop, not a failure |
 | A finding needs a decision about intended behaviour | Escalate with the specific question |
 | Requirements ambiguous, credentials missing, or required validation impossible | Escalate before guessing |
 | A destructive or irreversible operation is needed | Ask first |
@@ -413,7 +413,7 @@ Every run ends with:
 1. The issue, its source, and the PR link.
 2. Acceptance criteria mapped to how each is satisfied.
 3. One row per review comment across all cycles: decision and reasoning.
-4. Under `--tranches`: the approved plan, per tranche the feedback received
+4. Under `--hitl`: the approved plan, per tranche the feedback received
    and what it changed, and per review round the resolutions as agreed and
    the sign-off that released the commit.
 5. Files changed and the final commit hash on the pushed branch.
