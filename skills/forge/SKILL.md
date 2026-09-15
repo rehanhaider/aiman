@@ -99,7 +99,9 @@ is judged against.
 ## 2. Implement
 
 Create a semantic branch from the current checkout, named for the issue
-(`feat/NAV-123-tenant-scoped-lookup`).
+(`feat/NAV-123-tenant-scoped-lookup`). Under `--hitl` the branch must live in
+the user's own checkout: do not create a git worktree, and decline any harness
+offer to move the run into one. Phase 2a says why.
 
 Build only what the acceptance criteria require. Read the authority documents
 the issue defers to, plus `AGENTS.md` and `CLAUDE.md`, before writing code.
@@ -117,6 +119,15 @@ Do not proceed to a PR with a failing gate. Fix it, or stop and report it.
 ## 2a. Tranches (`--hitl` only)
 
 Without the flag, skip this section.
+
+**Work in the user's checkout, on a local branch.** Every tranche waits
+uncommitted for the user to read it in their editor and run it in their
+environment. That only works when the files are in the working tree they
+already have open. Create the branch in the current checkout and stay there.
+Never run `git worktree add`, never use a worktree tool the harness offers, and
+if the run has already been placed in a worktree, leave it and switch the
+user's checkout to the branch before writing any code. Say which checkout and
+branch the tranche is sitting in when you hand it back.
 
 **Plan first.** Before writing any code, derive the tranches from the
 acceptance criteria: each tranche independently implementable, testable, and
