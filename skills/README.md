@@ -6,12 +6,12 @@ Agent skills for Claude Code / Cursor / Codex-style assistants. Each skill is a 
 
 ## Usage
 
-Link the library into the directories Claude Code, Codex, and Cursor read:
+From any project directory (after `npm link` once in this repo):
 
 ```bash
-npm run link-skills                 # all skills, globally
-npm run link-skills hallmark        # just one
-npm run link-skills -- --project    # into this repo instead of the home directory
+aiman link                 # all skills → .claude/skills and .agents/skills
+aiman link hallmark        # just one
+aiman unlink hallmark      # remove
 ```
 
 Or install a pinned version from the plugin marketplace this repo publishes:
