@@ -131,7 +131,7 @@ fetch_codex() {
     local line
 
     coproc CODEX { codex app-server 2>/dev/null; }
-    trap '[ -n "${CODEX_PID:-}" ] && kill "$CODEX_PID" 2>/dev/null' RETURN
+    trap '[ -n "${CODEX_PID:-}" ] && kill "$CODEX_PID" 2>/dev/null' EXIT
 
     send() {
         printf '%s\n' "$1" >&"${CODEX[1]}"
@@ -168,12 +168,11 @@ fetch_codex() {
 # Emits one TSV row per Cursor plan category. The CLI only exposes usage through the
 # interactive /usage panel, so drive it inside a throwaway tmux session and read the pane.
 fetch_cursor() {
-    local session="ai-status-$$" workdir pane line label percent resets tries
+    local session="$CURSOR_SESSION" pane line label percent resets tries
 
-    workdir=$(mktemp -d)
-    trap 'tmux -L ai-status kill-session -t "$session" 2>/dev/null; rm -rf "$workdir"' RETURN
+    trap 'tmux -L ai-status kill-session -t "$session" 2>/dev/null' EXIT
 
-    tmux -L ai-status new-session -d -s "$session" -x 100 -y 40 -c "$workdir" 'cursor-agent --trust' || return
+    tmux -L ai-status new-session -d -s "$session" -x 100 -y 40 -c "$WORK" 'cursor-agent --trust' || return
     sleep 6
     tmux -L ai-status send-keys -t "$session" '/usage'
     sleep 2
@@ -181,6 +180,8 @@ fetch_cursor() {
 
     for ((tries = 0; tries < 30; tries++)); do
         sleep 1
+        # $$ is still the main script here; if it was SIGKILLed, nobody else will tidy up.
+        kill -0 "$$" 2>/dev/null || { rm -rf "$WORK"; return; }
         pane=$(tmux -L ai-status capture-pane -t "$session" -p 2>/dev/null) || return
         [[ "$pane" == *"Usage • "* ]] && break
     done
@@ -198,18 +199,40 @@ fetch_cursor() {
     done <<<"$pane"
 }
 
-# Each fetch takes a few seconds, so run them side by side and print once all are in.
-claude_rows=$(mktemp)
-codex_rows=$(mktemp)
-cursor_rows=$(mktemp)
-trap 'rm -f "$claude_rows" "$codex_rows" "$cursor_rows"' EXIT
+# Everything a run creates lives under one temp dir and one named tmux session, so
+# cleanup is the same whether the run finishes, is interrupted, or is killed.
+WORK=$(mktemp -d -t "ai-status.$$.XXXXXX")
+CURSOR_SESSION="ai-status-$$"
 
-fetch_claude >"$claude_rows" &
-fetch_codex >"$codex_rows" &
-fetch_cursor >"$cursor_rows" &
+cleanup() {
+    # A second signal mid-cleanup (watch dying sends HUP right after INT) must not cut this short.
+    trap '' HUP INT TERM
+    tmux -L ai-status kill-session -t "$CURSOR_SESSION" 2>/dev/null
+    kill $(jobs -p) 2>/dev/null
+    rm -rf "$WORK"
+}
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+# A SIGKILLed run can't clean up; its session and work dir carry its pid, so reap them here.
+while IFS= read -r stale; do
+    [[ "$stale" =~ ^ai-status-([0-9]+)$ ]] || continue
+    kill -0 "${BASH_REMATCH[1]}" 2>/dev/null || tmux -L ai-status kill-session -t "$stale" 2>/dev/null
+done < <(tmux -L ai-status list-sessions -F '#S' 2>/dev/null)
+for stale in "${TMPDIR:-/tmp}"/ai-status.*.*; do
+    [[ "$stale" =~ /ai-status\.([0-9]+)\.[^/]+$ ]] || continue
+    kill -0 "${BASH_REMATCH[1]}" 2>/dev/null || rm -rf "$stale"
+done
+
+# Each fetch takes a few seconds, so run them side by side and print once all are in.
+fetch_claude >"$WORK/claude" &
+fetch_codex >"$WORK/codex" &
+fetch_cursor >"$WORK/cursor" &
 wait
 
 printf '\n  %sAI usage%s   %supdated %s%s\n\n' "$BOLD" "$RESET" "$DIM" "$(date +'%a %H:%M')" "$RESET"
-render_section 'Claude' <"$claude_rows"
-render_section 'Codex' <"$codex_rows"
-render_section 'Cursor' <"$cursor_rows"
+render_section 'Claude' <"$WORK/claude"
+render_section 'Codex' <"$WORK/codex"
+render_section 'Cursor' <"$WORK/cursor"
