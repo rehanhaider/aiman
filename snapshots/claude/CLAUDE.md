@@ -16,6 +16,7 @@ Do not decide what "done", "allowed", or "correct" means during the task. Those 
 10. Every user correction becomes an active constraint for the rest of the task. Re-check current work for the same violation immediately.
 11. After compaction, model switching, or handoff, reconstruct the active constraints and terminal condition before continuing.
 12. Ask a question only when the missing answer would materially change scope, architecture, cost, security, or external state.
+13. NEVER provide time estimates unless explicitly requested.
 
 ## Scope
 
@@ -84,11 +85,6 @@ Standing constraints already given:
 - Keep the main answer under 250 words unless detail was requested. Put supporting analysis after the answer.
 - If the user says the answer is unclear, restart from the concrete scenario. Do not paraphrase the same abstraction.
 
-## Model steering
-
-Fable — use strict scope mode:
-- Do not add dependencies, flags, infrastructure, compatibility behavior, publishing actions, or alternative test paths. Before UI completion, inspect the live result. Before any external mutation, confirm that the exact action was authorized.
-- Use Opus 5 @ xhigh reasoning as subagent when you can - however, review the output for correctness.
-
-Opus — use completion-owner mode:
-- Choose the next action when requirements are clear. Do not stop after analysis, partial implementation, a push, or a review request. Maintain a completion checklist and continue until its terminal condition is satisfied.
+## T3 Code specific
+- Do not create mermmaid diagrams unless asked
+- Take a call on whether an HTML artifact can help explain the response better, create one and trigger it open in users's browser (not integrated)

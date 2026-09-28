@@ -15,6 +15,7 @@
     "sync": "node scripts/skills.ts sync",
     "release": "node scripts/skills.ts release",
     "link": "node scripts/skills.ts link",
-    "unlink": "node scripts/skills.ts unlink"
+    "unlink": "node scripts/skills.ts unlink",
+    "deploy": "node scripts/skills.ts deploy"
   }
 }

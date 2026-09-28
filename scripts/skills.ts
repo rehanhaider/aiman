@@ -7,6 +7,7 @@
 //   aiman release <s> <lvl>  bump a skill's version
 //   aiman link [names...]    copy skills into .claude/skills and .agents/skills
 //   aiman unlink [names...]  remove those copies
+//   aiman deploy             copy snapshots/ to the live instruction files
 //
 // Stdlib only. Node >= 22.6 runs this file directly (native type stripping).
 
@@ -23,6 +24,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -404,6 +406,28 @@ function unlink(names: string[]): number {
   return 0;
 }
 
+// Each snapshot and the live file it is deployed to.
+const SNAPSHOTS = [
+  { source: join(REPO, "snapshots", "claude", "CLAUDE.md"), target: join(homedir(), ".claude", "CLAUDE.md") },
+  { source: join(REPO, "snapshots", "codex", "AGENTS.md"), target: join(homedir(), ".codex", "AGENTS.md") },
+];
+
+function deploy(): number {
+  for (const { source, target } of SNAPSHOTS) {
+    const next = readFileSync(source, "utf8");
+    const current = existsSync(target) ? readFileSync(target, "utf8") : null;
+    if (current === next) {
+      console.log(`unchanged  ${target}`);
+      continue;
+    }
+    if (current !== null) spawnSync("diff", ["-u", target, source], { stdio: "inherit" });
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, next);
+    console.log(`${current === null ? "created" : "updated"}    ${target}`);
+  }
+  return 0;
+}
+
 const [command = "check", ...rest] = process.argv.slice(2);
 switch (command) {
   case "check":
@@ -420,9 +444,11 @@ switch (command) {
   case "link":
   case "unlink":
     process.exit(command === "link" ? link(rest) : unlink(rest));
+  case "deploy":
+    process.exit(deploy());
   default:
     console.error(
-      `Unknown command '${command}'. Use: aiman check | sync | release <skill> [level] | link [names...] | unlink [names...]`,
+      `Unknown command '${command}'. Use: aiman check | sync | release <skill> [level] | link [names...] | unlink [names...] | deploy`,
     );
     process.exit(1);
 }

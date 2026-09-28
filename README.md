@@ -14,7 +14,7 @@ wants a pinned version.
 | `skills/` | The skill library — one directory per skill, each with a `SKILL.md`. See [skills/README.md](skills/README.md) for the catalog and conventions. |
 | `.claude-plugin/marketplace.json` | The registry: one entry per skill, with its version. Generated from `skills/` by `aiman sync` — don't hand-edit names, sources, or descriptions. |
 | `scripts/` | `skills.ts` — the `aiman` CLI — and `ai-status`, which shows Claude, Codex and Cursor usage on one screen. See [ai-status](#ai-status). |
-| `snapshots/` | The instruction files as deployed — `snapshots/claude/CLAUDE.md` (`~/.claude/CLAUDE.md`) and `snapshots/codex/AGENTS.md` (`~/.codex/AGENTS.md`). |
+| `snapshots/` | The instruction files as deployed — `snapshots/claude/CLAUDE.md` (`~/.claude/CLAUDE.md`) and `snapshots/codex/AGENTS.md` (`~/.codex/AGENTS.md`). Edit them here, then run `aiman deploy`. |
 | `analysis/` | Working notes the instruction files came out of, e.g. the per-model failure analyses in `analysis/AGENTS/`. |
 
 ## ai-status
@@ -107,7 +107,12 @@ aiman check                      # validate skills, registry, and catalog
 aiman sync                       # refresh the registry after adding or renaming a skill
 aiman release <skill> [patch|minor|major]
 aiman link / unlink              # from any project directory
+aiman deploy                     # copy snapshots/ to ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md
 ```
+
+`aiman deploy` prints a diff for each instruction file that changed, then overwrites
+the live copy. Files that already match are left alone. New Claude Code and Codex
+sessions pick up the change.
 
 `aiman check` runs the library rules (frontmatter, description limit, link and path
 resolution), verifies the registry and the README catalog match `skills/`, and then runs
