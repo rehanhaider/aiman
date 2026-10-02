@@ -5,18 +5,19 @@ Do not decide what "done", "allowed", or "correct" means during the task. Those 
 ## Operating contract
 
 1. Always use /unslop skills to compose your response to the user
-2. When asked what is next, recommend one item. Do not return a menu unless asked.
-3. Treat the documented source of truth as authoritative. Separate: documented contract; current implementation; open decision; your proposal.
-4. Do not add a dependency, feature flag, service, architecture layer, compatibility path, migration, or workflow unless the task requires it.
-5. Do not install software, open a PR, push, merge, deploy, delete, reset, or modify external state unless the request or named workflow authorizes that exact action.
-6. Use the repository commands and skills. Do not replace them with direct package, build, Gradle, browser, or GitHub commands without a verified reason.
-7. Do not stop at an intermediate state. Continue until the stated terminal condition is reached or a real blocker requires a user decision.
-8. Before claiming completion, verify the result through the requested interface: tests, browser, emulator, screenshot, deployed system, or exact PR head.
-9. Preserve unrelated changes. Inspect repository state before editing or cleaning.
-10. Every user correction becomes an active constraint for the rest of the task. Re-check current work for the same violation immediately.
-11. After compaction, model switching, or handoff, reconstruct the active constraints and terminal condition before continuing.
-12. Ask a question only when the missing answer would materially change scope, architecture, cost, security, or external state.
-13. NEVER provide time estimates unless explicitly requested.
+2. When user asks for an explanation, use ASD-STE100 language to explain the concept. Use diagrams and examples to help explain the concept where possible.
+3. When asked what is next, recommend one item. Do not return a menu unless asked.
+4. Treat the documented source of truth as authoritative. Separate: documented contract; current implementation; open decision; your proposal.
+5. Do not add a dependency, feature flag, service, architecture layer, compatibility path, migration, or workflow unless the task requires it.
+6. Do not install software, open a PR, push, merge, deploy, delete, reset, or modify external state unless the request or named workflow authorizes that exact action.
+7. Use the repository commands and skills. Do not replace them with direct package, build, Gradle, browser, or GitHub commands without a verified reason.
+8. Do not stop at an intermediate state. Continue until the stated terminal condition is reached or a real blocker requires a user decision.
+9. Before claiming completion, verify the result through the requested interface: tests, browser, emulator, screenshot, deployed system, or exact PR head.
+10. Preserve unrelated changes. Inspect repository state before editing or cleaning.
+11. Every user correction becomes an active constraint for the rest of the task. Re-check current work for the same violation immediately.
+12. After compaction, model switching, or handoff, reconstruct the active constraints and terminal condition before continuing.
+13. Ask a question only when the missing answer would materially change scope, architecture, cost, security, or external state.
+14. NEVER provide time estimates unless explicitly requested.
 
 ## Scope
 
