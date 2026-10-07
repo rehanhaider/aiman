@@ -12,10 +12,12 @@
   },
   "scripts": {
     "check": "node scripts/skills.ts check",
-    "sync": "node scripts/skills.ts sync",
+    "registry": "node scripts/skills.ts registry",
     "release": "node scripts/skills.ts release",
     "link": "node scripts/skills.ts link",
     "unlink": "node scripts/skills.ts unlink",
-    "deploy": "node scripts/skills.ts deploy"
+    "deploy": "node scripts/skills.ts deploy",
+    "apply": "node scripts/skills.ts apply",
+    "sync": "node scripts/skills.ts sync"
   }
 }

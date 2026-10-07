@@ -73,4 +73,4 @@ See the [repo README](../README.md) for the difference, updates, and versioning.
 - Every relative link and `references/...` path must resolve — `npm run check` enforces this,
   along with the registry and this catalog; run it before committing.
 - Evals live in the skill's own `evals/` directory; retired guides live in `.archive/`.
-- A new skill needs a `npm run sync` to enter the registry; it starts at version `0.1.0`.
+- A new skill needs a `npm run registry` to enter the registry; it starts at version `0.1.0`.

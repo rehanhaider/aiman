@@ -12,7 +12,8 @@ wants a pinned version.
 | Path | What lives there |
 | --- | --- |
 | `skills/` | The skill library — one directory per skill, each with a `SKILL.md`. See [skills/README.md](skills/README.md) for the catalog and conventions. |
-| `.claude-plugin/marketplace.json` | The registry: one entry per skill, with its version. Generated from `skills/` by `aiman sync` — don't hand-edit names, sources, or descriptions. |
+| `.claude-plugin/marketplace.json` | The registry: one entry per skill, with its version. Generated from `skills/` by `aiman registry` — don't hand-edit names, sources, or descriptions. |
+| `global.json` | The global skills, linked into `~/.claude/skills` and `~/.agents/skills` on every device, and the devices `aiman sync` updates. See [Global skills](#global-skills). |
 | `scripts/` | `skills.ts` — the `aiman` CLI — and `ai-status`, which shows Claude, Codex and Cursor usage on one screen. See [ai-status](#ai-status). |
 | `snapshots/` | The instruction files as deployed — `snapshots/claude/CLAUDE.md` (`~/.claude/CLAUDE.md`) and `snapshots/codex/AGENTS.md` (`~/.codex/AGENTS.md`). Edit them here, then run `aiman deploy`. |
 | `analysis/` | Working notes the instruction files came out of, e.g. the per-model failure analyses in `analysis/AGENTS/`. |
@@ -46,7 +47,7 @@ From this repo:
 npm link
 ```
 
-That puts `aiman` on your PATH. The library always lives here; `check` / `sync` /
+That puts `aiman` on your PATH. The library always lives here; `check` / `registry` /
 `release` operate on this repo. `link` / `unlink` always target the directory you
 are standing in.
 
@@ -100,11 +101,39 @@ demand with `claude plugin marketplace update aiman` and `claude plugin update <
 Codex and Cursor have no plugin equivalent — `aiman link` is their only path.
 Claude Code does not read `.agents/skills`, which is why the installer writes both.
 
+## Global skills
+
+`global.json` declares the skills every agent on every device gets, and the devices
+that share them:
+
+```json
+{ "skills": ["forge", "pr-review", "svg-animations", "unslop"], "devices": ["PC", "thinkbox"] }
+```
+
+To change the global set, edit `skills`, commit, and run:
+
+```bash
+aiman sync     # push this repo, then apply on every device
+aiman apply    # this device only
+```
+
+`apply` symlinks each listed skill into `~/.claude/skills` and `~/.agents/skills`,
+removes any other symlink there that points into this library, and runs `aiman deploy`.
+It never touches real directories or links to anything else, so tool-managed skills
+(Claude's `synced`, Omarchy's) stay put. Global installs are symlinks, so edits here
+are live at once; project installs from `aiman link` stay copies.
+
+`sync` refuses to run with uncommitted changes, pushes any unpushed commits, then for
+each device: runs `apply` here if the name matches this machine's hostname, otherwise
+SSHes in, pulls, and runs `apply` from the same path under `~`. It prints one line per
+device and exits non-zero if any failed. Devices need passwordless SSH, a clone of this
+repo at the same path, and Node >= 22.6 on a login shell's PATH.
+
 ## Working on the library
 
 ```bash
 aiman check                      # validate skills, registry, and catalog
-aiman sync                       # refresh the registry after adding or renaming a skill
+aiman registry                   # refresh the registry after adding or renaming a skill
 aiman release <skill> [patch|minor|major]
 aiman link / unlink              # from any project directory
 aiman deploy                     # copy snapshots/ to ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md

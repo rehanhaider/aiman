@@ -3,11 +3,13 @@
 // run `aiman` from any project to copy skills into that project's agent dirs.
 //
 //   aiman check              validate library + registry (this repo)
-//   aiman sync               rewrite the registry from skills/
+//   aiman registry           rewrite the registry from skills/
 //   aiman release <s> <lvl>  bump a skill's version
 //   aiman link [names...]    copy skills into .claude/skills and .agents/skills
 //   aiman unlink [names...]  remove those copies
 //   aiman deploy             copy snapshots/ to the live instruction files
+//   aiman apply              make this device match global.json, then deploy
+//   aiman sync               push this repo, then apply on every device in global.json
 //
 // Stdlib only. Node >= 22.6 runs this file directly (native type stripping).
 
@@ -22,10 +24,11 @@ import {
   readlinkSync,
   realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, join, relative, resolve } from "node:path";
+import { homedir, hostname } from "node:os";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -219,7 +222,7 @@ function buildEntries(skills: Skill[], existing: Entry[]): Entry[] {
   });
 }
 
-function sync() {
+function registry() {
   const market = readRegistry();
   const before = JSON.stringify(market.plugins);
   const skills = readSkills();
@@ -254,7 +257,7 @@ function check(): number {
   const market = readRegistry();
   const expected = buildEntries(skills, market.plugins);
   if (JSON.stringify(expected) !== JSON.stringify(market.plugins)) {
-    console.log("registry:\n  ERROR   .claude-plugin/marketplace.json is stale — run `npm run sync`");
+    console.log("registry:\n  ERROR   .claude-plugin/marketplace.json is stale — run `aiman registry`");
     errors++;
   }
 
@@ -281,7 +284,7 @@ function release(name: string, level = "patch"): number {
   const market = readRegistry();
   const entry = market.plugins.find((e) => e.name === name);
   if (!entry) {
-    console.error(`No skill named '${name}' in the registry. Run \`npm run sync\` if it is new.`);
+    console.error(`No skill named '${name}' in the registry. Run \`aiman registry\` if it is new.`);
     return 1;
   }
   const [major, minor, patch] = entry.version.split(".").map(Number);
@@ -428,12 +431,99 @@ function deploy(): number {
   return 0;
 }
 
+// The global set: skills symlinked into the user-level agent dirs on every
+// device, and the devices `sync` reaches over SSH.
+const GLOBAL = join(REPO, "global.json");
+const GLOBAL_DIRS = [join(homedir(), ".claude", "skills"), join(homedir(), ".agents", "skills")];
+
+type Global = { skills: string[]; devices: string[] };
+
+const isThisDevice = (device: string) => device.toLowerCase() === hostname().toLowerCase();
+
+/** Make this device's global skill dirs match global.json, then deploy the instruction files. */
+function apply(): number {
+  const global = JSON.parse(readFileSync(GLOBAL, "utf8")) as Global;
+  // selectSkills([]) means "all", but an empty global set means none.
+  const skills = global.skills.length ? selectSkills(global.skills) : [];
+  if (!skills) return 1;
+  const wanted = new Set(global.skills);
+  let failed = 0;
+
+  for (const dir of GLOBAL_DIRS) {
+    mkdirSync(dir, { recursive: true });
+    console.log(dir);
+    for (const skill of skills) {
+      const target = join(dir, skill.name);
+      const stat = lstatSync(target, { throwIfNoEntry: false });
+      if (stat?.isSymbolicLink() && resolve(dir, readlinkSync(target)) === skill.dir) continue;
+      if (stat && !stat.isSymbolicLink()) {
+        console.log(`  SKIP     ${skill.name} — a real directory is already there`);
+        failed++;
+        continue;
+      }
+      if (stat) rmSync(target);
+      symlinkSync(skill.dir, target);
+      console.log(`  link     ${skill.name}`);
+    }
+
+    // Only symlinks into this library are ours to remove; anything else stays.
+    for (const name of readdirSync(dir)) {
+      const target = join(dir, name);
+      if (wanted.has(name) || !lstatSync(target).isSymbolicLink()) continue;
+      if (!resolve(dir, readlinkSync(target)).startsWith(LIB + sep)) continue;
+      rmSync(target);
+      console.log(`  unlink   ${name}`);
+    }
+  }
+
+  deploy();
+  return failed ? 1 : 0;
+}
+
+const git = (...args: string[]) => spawnSync("git", ["-C", REPO, ...args], { encoding: "utf8" });
+
+/** Publish this repo, then run `apply` here and on every other device in global.json. */
+function syncDevices(): number {
+  if (git("status", "--porcelain").stdout.trim()) {
+    console.error("aiman has uncommitted changes — commit them, then re-run `aiman sync`.");
+    return 1;
+  }
+  git("fetch", "--quiet");
+  const [behind, ahead] = git("rev-list", "--left-right", "--count", "@{u}...HEAD").stdout.trim().split(/\s+/).map(Number);
+  if (behind && ahead) {
+    console.error("aiman has diverged from its upstream — rebase or merge, then re-run `aiman sync`.");
+    return 1;
+  }
+  if (behind && git("pull", "--quiet", "--ff-only").status !== 0) return 1;
+  if (ahead && spawnSync("git", ["-C", REPO, "push", "--quiet"], { stdio: "inherit" }).status !== 0) return 1;
+
+  const global = JSON.parse(readFileSync(GLOBAL, "utf8")) as Global;
+  const remoteRepo = relative(homedir(), REPO);
+  const results: [string, boolean][] = [];
+
+  for (const device of global.devices) {
+    console.log(`\n== ${device}`);
+    if (isThisDevice(device)) {
+      results.push([device, apply() === 0]);
+      continue;
+    }
+    // A login shell, so version managers such as mise put node on PATH.
+    const remote = `bash -lc 'cd ~/${remoteRepo} && git pull --quiet --ff-only && node scripts/skills.ts apply'`;
+    const ssh = spawnSync("ssh", ["-o", "BatchMode=yes", "-o", "ConnectTimeout=8", device, remote], { stdio: "inherit" });
+    results.push([device, ssh.status === 0]);
+  }
+
+  console.log("");
+  for (const [device, ok] of results) console.log(`${ok ? "ok      " : "FAILED  "}${device}`);
+  return results.every(([, ok]) => ok) ? 0 : 1;
+}
+
 const [command = "check", ...rest] = process.argv.slice(2);
 switch (command) {
   case "check":
     process.exit(check());
-  case "sync":
-    sync();
+  case "registry":
+    registry();
     break;
   case "release":
     if (!rest[0]) {
@@ -446,9 +536,13 @@ switch (command) {
     process.exit(command === "link" ? link(rest) : unlink(rest));
   case "deploy":
     process.exit(deploy());
+  case "apply":
+    process.exit(apply());
+  case "sync":
+    process.exit(syncDevices());
   default:
     console.error(
-      `Unknown command '${command}'. Use: aiman check | sync | release <skill> [level] | link [names...] | unlink [names...] | deploy`,
+      `Unknown command '${command}'. Use: aiman check | registry | release <skill> [level] | link [names...] | unlink [names...] | deploy | apply | sync`,
     );
     process.exit(1);
 }
