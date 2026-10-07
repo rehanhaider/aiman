@@ -2,7 +2,7 @@
 name: unslop
 description: Cut AI tells from a piece of writing. Run only when the user explicitly invokes /unslop. Do not trigger on your own.
 model: claude-opus-5
-effort: high
+effort: low
 context: fork
 ---
 

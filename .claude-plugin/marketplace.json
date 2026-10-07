@@ -94,8 +94,8 @@
     {
       "name": "unslop",
       "source": "./skills/unslop",
-      "description": "Cut AI tells from any writing. Must always apply.",
-      "version": "0.1.0",
+      "description": "Cut AI tells from a piece of writing. Run only when the user explicitly invokes /unslop. Do not trigger on your own.",
+      "version": "0.1.1",
       "category": "writing"
     },
     {
