@@ -3,11 +3,11 @@ name: forge
 description: >-
   Take a tracked issue from wherever it lives — Linear, GitHub Issues, or an
   in-repo document — through implementation, a pull request, and a self-driving
-  review-and-rectify loop, stopping at a verified ready-to-merge state without
-  merging. The reviewer is local, Cursor, or Codex. Use when the user
-  asks to ship, land, or implement an issue end to end, to shepherd or babysit
-  a pull request through review, to keep resolving review comments until a PR
-  is clean, or invokes "/forge" or "/ship-issue". With --hitl, the run
+  review-and-rectify loop, stopping at a verified ready-to-merge state. It
+  merges only under --merge, and only a clean PR. The reviewer is local,
+  Cursor, or Codex. Use when the user asks to ship, land, or implement an
+  issue end to end, to shepherd or babysit a pull request through review, to
+  keep resolving review comments until a PR is clean, or invokes "/forge" or "/ship-issue". With --hitl, the run
   splits the work into an approved plan. Each tranche waits uncommitted for
   the user's review, and the run fixes what they flag before asking to commit.
   Review findings get the same gate: the user agrees each proposed resolution
@@ -17,8 +17,8 @@ description: >-
 # Forge
 
 Own one issue from its tracker to a pull request that a fresh review reports as
-clean, then hand it back. One invocation covers every cycle; the user should not
-have to re-prompt between review rounds. Under `--hitl` the opposite is the
+clean, then hand it back — or, under `--merge`, merge it. One invocation covers
+every cycle; the user should not have to re-prompt between review rounds. Under `--hitl` the opposite is the
 contract: the run pauses at every checkpoint and waits for feedback, in the
 review rounds as much as in the build.
 
@@ -26,10 +26,12 @@ review rounds as much as in the build.
 
 These hold for the whole run. Breaking one is a failure, not a judgement call.
 
-1. **Never merge.** The terminal state is a clean PR reported as ready to merge.
-   Merging is the user's decision, even when every gate is green.
-   Report ready to merge only on a `clean` verdict — never infer it from an
-   absence of findings, which an unreviewed pull request also has.
+1. **Never merge without `--merge`.** The terminal state is a clean PR reported
+   as ready to merge. Merging is the user's decision, even when every gate is
+   green. `--merge` is that decision made in advance: it permits one merge, of
+   a `clean` PR, through phase 7. No other verdict or stop condition may end
+   in a merge. Report ready to merge only on a `clean` verdict — never infer it
+   from an absence of findings, which an unreviewed pull request also has.
 2. **Never stop at "PR opened."** Opening the PR is the midpoint. Remain
    responsible until the loop terminates or a stop condition fires.
    Keep going while each round makes progress. Rounds are not rationed — a
@@ -51,7 +53,7 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
 ## Arguments
 
 ```text
-/forge <issue-ref> [--reviewer local|cursor|codex] [--pr <number>] [--cycles <n>] [--hitl]
+/forge <issue-ref> [--reviewer local|cursor|codex] [--pr <number>] [--cycles <n>] [--hitl] [--merge]
 ```
 
 - `issue-ref` — a Linear key, GitHub issue number, document path, or plain
@@ -76,6 +78,10 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
   uncommitted until the user reviews and confirms it. Once the PR is under
   review, every round stops twice more: the proposed resolutions before any
   edit, and the fixes before any commit. See phases 2a and 6.
+- `--merge` — off by default. When the loop ends on `clean`, merge the PR
+  instead of handing it back. Every other ending stops exactly as it would
+  without the flag. With `--hitl`, the merge is one more checkpoint: ask
+  before merging. See phase 7.
 
 In the commands below, `<skill>` is the directory containing this file.
 
@@ -343,7 +349,7 @@ Unresolved conversations decide on their own. The newest review body is read
 | Verdict | Meaning | What to do |
 | --- | --- | --- |
 | `findings` | unresolved conversations exist | Rectify — phase 6 |
-| `clean` | every reviewer of this exact commit posted the all-clear | **Ready to merge** — phase 7 |
+| `clean` | every reviewer of this exact commit posted the all-clear | **Ready to merge** — phase 7, which merges under `--merge` |
 | `unreviewed` | no review exists at all | Go back to phase 4 and get one |
 | `stale` | every review is of an older commit | Re-review the current head |
 | `unclear` | reviewed at head, but some reviewer gave no all-clear | Read `reviews_at_head_without_marker`; never assume clean |
@@ -399,7 +405,7 @@ Stop and report when any of these fires:
 
 | Condition | Outcome |
 | --- | --- |
-| `verdict` is `clean` | **Ready to merge** |
+| `verdict` is `clean` | **Ready to merge** — or, under `--merge`, merge it as below |
 | `verdict` is `blocked`, `unknown`, or `draft` | Stop — say which, and what the user must do |
 | `verdict` is `unreviewed`, `stale`, or `unclear` after a cycle | Say which, and that the PR is *not* confirmed clean |
 | **Stalled** — a round ends with the same unresolved threads it started with, or a finding you already rectified comes back unchanged twice | Repeating the round will not help. Hand back with what is stuck and why |
@@ -415,7 +421,39 @@ On the ready-to-merge path, state it plainly and stop:
 > PR #42 is ready to merge — reviewed `31ded9d53a`, no findings, 0 unresolved
 > threads, all checks green. Merge when you are ready.
 
-Do not merge it, and do not offer to merge it as the obvious next step.
+Without `--merge`, do not merge it, and do not offer to merge it as the obvious
+next step.
+
+### Merging under `--merge`
+
+Only on `clean`, and only for the commit that verdict names:
+
+1. Under `--hitl`, stop first: report the clean verdict, the commit, and the
+   merge method, and ask one question. Merge only on an explicit yes.
+2. Pick the method from what the repository allows:
+
+   ```bash
+   gh repo view --json squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed
+   ```
+
+   If exactly one is allowed, use it. Otherwise squash.
+3. Merge, pinned to the reviewed commit so a push that lands after the
+   review cannot slip in:
+
+   ```bash
+   gh pr merge <number> --<squash|merge|rebase> --match-head-commit <sha> --delete-branch
+   ```
+
+4. Never pass `--admin`, `--auto`, or anything else that bypasses branch
+   protection, required checks, or required reviews. If the merge is refused
+   — protection, a conflict, a moved head, a failed check — stop and report
+   the refusal verbatim. Do not rebase, force-push, or retry around it.
+5. Do not close the issue. `Closes #<n>` in the PR body closes it on merge;
+   otherwise its status stays where phase 1 left it.
+
+Then report it plainly:
+
+> PR #42 merged — reviewed `31ded9d53a`, squash, branch deleted.
 
 ## Final report
 
@@ -431,7 +469,8 @@ Every run ends with:
 6. Checks run and their results, including anything skipped.
 7. Threads left unresolved and why.
 8. Which reviewer produced the verdict and which model read the diff.
-9. The terminal state: ready to merge, escalated, or not converged.
+9. The terminal state: ready to merge, merged (with the method and merge
+   commit), escalated, or not converged.
 
 ## References
 

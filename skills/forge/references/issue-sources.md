@@ -38,7 +38,8 @@ Keys look like `NAV-123`.
 - Reference the key in the branch name, commit trailer, and PR body so Linear
   links the PR automatically.
 - Move the issue to the in-review state once the PR is open, if the workspace
-  uses one. Do not move it to done — this skill never merges.
+  uses one. Do not move it to done — the merge does that, and this skill
+  merges only under `--merge`.
 
 ## GitHub Issues
 
@@ -52,7 +53,7 @@ rather than in the body.
 - Link the issue from the PR body with `Closes #<number>` when merging should
   close it, or `Refs #<number>` when it should not.
 - Do not close the issue directly. The merge closes it, and merging is the
-  user's step.
+  user's step unless the run has `--merge`.
 
 ## In-repo docs
 
