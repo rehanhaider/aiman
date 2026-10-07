@@ -10,7 +10,7 @@ metadata:
   role: specialist
   scope: implementation
   output-format: code
-  related-skills: playwright-expert, frontend-design
+  related-skills: frontend-design
 ---
 
 # React Expert
