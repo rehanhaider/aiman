@@ -24,10 +24,10 @@ Keep that wording exactly. Automation reads `no new issues found` as the
 all-clear signal, and a PR with no review at all also has no findings — the
 phrase is what separates "reviewed and clean" from "never reviewed."
 
-Only P1 and P2 findings are posted. `post` drops P3/P4 by default, so a review
-whose only survivors were P3/P4 renders this same all-clear sentence — the
+P0, P1 and P2 findings are posted. `post` drops P3 by default, so a review
+whose only survivors were P3 renders this same all-clear sentence — the
 signal means nothing merge-relevant, not that the ledger was empty. Pass
-`--include-low` to restore the low tiers when the user asks for them.
+`--include-low` to post P3 when the user asks for it.
 
 ## Unverified suspicions
 
@@ -82,9 +82,9 @@ The summary must not contain:
 - pre-existing or out-of-scope issues
 - the agent's investigation or severity reasoning
 
-With `--include-low`, when the inline cap is exceeded only overflow P3/P4
-titles appear beneath the count. P1/P2 findings always remain inline and are
-never capped.
+With `--include-low`, when the inline cap is exceeded only overflow P3
+titles appear beneath the count. P0, P1 and P2 findings always remain inline
+and are never capped.
 
 ## Inline finding
 
@@ -100,10 +100,10 @@ Badge colors:
 
 | Priority | Color |
 | --- | --- |
+| P0 | red |
 | P1 | orange |
 | P2 | yellow |
 | P3 | lightgrey (only with `--include-low`) |
-| P4 | lightgrey (only with `--include-low`) |
 
 ## Writing rule
 

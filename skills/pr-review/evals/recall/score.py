@@ -138,9 +138,9 @@ def cmd_score(args: argparse.Namespace, corpus: dict) -> int:
             print(f"    [{p.get('severity','?')}] {p.get('path')}:{p.get('line')}"
                   f" — {str(p.get('title',''))[:70]}")
 
-    missed_severe = [k for k in misses if k["severity"] in ("P1", "P2")]
+    missed_severe = [k for k in misses if k["severity"] in ("P0", "P1", "P2")]
     if missed_severe:
-        print(f"\n  {len(missed_severe)} missed finding(s) were P1/P2.")
+        print(f"\n  {len(missed_severe)} missed finding(s) were P0-P2.")
         return 1
     return 0
 

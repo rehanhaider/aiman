@@ -32,8 +32,8 @@ from pathlib import Path
 HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 PR_URL_RE = re.compile(r"github\.[\w.-]+/([^/\s]+)/([^/\s]+)/pull/(\d+)")
 
-SEVERITIES = ("P1", "P2", "P3", "P4")
-BADGE_COLORS = {"P1": "orange", "P2": "yellow", "P3": "lightgrey", "P4": "lightgrey"}
+SEVERITIES = ("P0", "P1", "P2", "P3")
+BADGE_COLORS = {"P0": "red", "P1": "orange", "P2": "yellow", "P3": "lightgrey"}
 
 THREADS_QUERY = """\
 query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
@@ -317,18 +317,18 @@ def validate_suspicions(rows: object) -> list[str]:
 
 
 def drop_low_priority(findings: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Default posting policy: only P1/P2 reach the pull request. Returns
-    (posted, dropped); --include-low bypasses this."""
-    posted = [f for f in findings if f["severity"] in ("P1", "P2")]
-    low = [f for f in findings if f["severity"] in ("P3", "P4")]
+    """Default posting policy: P0, P1 and P2 reach the pull request; P3 is
+    recorded only. Returns (posted, dropped); --include-low bypasses this."""
+    posted = [f for f in findings if f["severity"] in ("P0", "P1", "P2")]
+    low = [f for f in findings if f["severity"] == "P3"]
     return posted, low
 
 
 def split_findings(findings: list[dict], max_inline: int) -> tuple[list[dict], list[dict]]:
-    """Keep every P1/P2 inline; apply the cap only to lower-priority findings."""
+    """Keep every P0-P2 finding inline; apply the cap only to P3."""
     ordered = sorted(findings, key=lambda f: SEVERITIES.index(f["severity"]))
-    blocking = [f for f in ordered if f["severity"] in ("P1", "P2")]
-    lower = [f for f in ordered if f["severity"] in ("P3", "P4")]
+    blocking = [f for f in ordered if f["severity"] in ("P0", "P1", "P2")]
+    lower = [f for f in ordered if f["severity"] == "P3"]
     lower_slots = max(max_inline - len(blocking), 0)
     return blocking + lower[:lower_slots], lower[lower_slots:]
 
@@ -524,7 +524,7 @@ def cmd_post(args: argparse.Namespace) -> int:
     if not args.include_low:
         findings, low = drop_low_priority(findings)
         if low:
-            print(f"note: {len(low)} P3/P4 finding(s) suppressed — only P1/P2 "
+            print(f"note: {len(low)} P3 finding(s) suppressed — only P0-P2 "
                   "are posted by default; pass --include-low to post them",
                   file=sys.stderr)
 
@@ -660,10 +660,10 @@ def main() -> int:
                         "candidates that could not be proved; rendered into the summary")
     p.add_argument("--event", default="COMMENT", choices=["COMMENT", "REQUEST_CHANGES", "APPROVE"])
     p.add_argument("--include-low", action="store_true",
-                   help="also post P3/P4 findings; by default only P1/P2 reach "
-                        "the pull request and lower tiers are dropped")
+                   help="also post P3 findings; by default only P0-P2 reach "
+                        "the pull request and P3 is dropped")
     p.add_argument("--max-inline", type=int, default=10,
-                   help="P3/P4 inline cap when --include-low is set; P1/P2 always stay inline")
+                   help="P3 inline cap when --include-low is set; P0-P2 always stay inline")
     p.add_argument("--no-validate", action="store_true", help="skip diff-anchor validation")
     p.add_argument("--dry-run", action="store_true", help="validate and print the payload without posting")
     p.add_argument("--allow-moved-head", action="store_true",

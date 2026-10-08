@@ -79,7 +79,7 @@ def reviewer_label(model: str) -> str:
     return f"{HARNESS}/{pretty_model(model)}"
 
 
-SEVERITIES = ("P1", "P2", "P3", "P4")
+SEVERITIES = ("P0", "P1", "P2", "P3")
 SIDES = ("RIGHT", "LEFT")
 
 
@@ -124,9 +124,9 @@ object:
 }
 ```
 
-- `side` is "RIGHT" or "LEFT", uppercase. `severity` is one of P1, P2, P3, P4.
+- `side` is "RIGHT" or "LEFT", uppercase. `severity` is one of P0, P1, P2, P3.
 - Both arrays may be empty. An empty `findings` array is a positive claim: you
-  completed the review and found nothing that clears step 4's bar. Never use it
+  completed the review and found nothing that clears step 5's bar. Never use it
   to mean you ran out of room or could not finish.
 - If you cannot complete the review, return `{"error": "<what stopped you>"}`
   instead. A partial review reported as empty would be read downstream as an

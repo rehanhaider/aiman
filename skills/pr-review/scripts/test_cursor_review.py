@@ -103,7 +103,7 @@ class TestNormalise(unittest.TestCase):
         self.assertEqual(findings[0]["severity"], "P2")
 
     def test_unknown_severity_is_fatal(self):
-        for sev in ("P0", "critical", "", None):
+        for sev in ("P4", "critical", "", None):
             with self.assertRaises(SystemExit):
                 normalise({"findings": [self.finding(severity=sev)]})
 

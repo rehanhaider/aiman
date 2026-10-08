@@ -136,34 +136,35 @@ class TestFindings(unittest.TestCase):
         self.assertEqual([f["title"] for f in inline], ["b", "d"])
         self.assertEqual([f["title"] for f in folded], ["a", "c"])
 
-    def test_split_never_folds_p1_or_p2(self):
+    def test_split_never_folds_p0_to_p2(self):
         findings = [
             {"path": "a", "severity": "P1", "title": "a", "body": "."},
             {"path": "b", "severity": "P2", "title": "b", "body": "."},
             {"path": "c", "severity": "P2", "title": "c", "body": "."},
             {"path": "d", "severity": "P3", "title": "d", "body": "."},
+            {"path": "e", "severity": "P0", "title": "e", "body": "."},
         ]
         inline, folded = split_findings(findings, 1)
-        self.assertEqual([f["title"] for f in inline], ["a", "b", "c"])
+        self.assertEqual([f["title"] for f in inline], ["e", "a", "b", "c"])
         self.assertEqual([f["title"] for f in folded], ["d"])
 
     def test_drop_low_priority_partitions_in_order(self):
         findings = [
             {"path": "a", "severity": "P3", "title": "a", "body": "."},
             {"path": "b", "severity": "P1", "title": "b", "body": "."},
-            {"path": "c", "severity": "P4", "title": "c", "body": "."},
+            {"path": "c", "severity": "P0", "title": "c", "body": "."},
             {"path": "d", "severity": "P2", "title": "d", "body": "."},
         ]
         posted, low = drop_low_priority(findings)
-        self.assertEqual([f["title"] for f in posted], ["b", "d"])
-        self.assertEqual([f["title"] for f in low], ["a", "c"])
+        self.assertEqual([f["title"] for f in posted], ["b", "c", "d"])
+        self.assertEqual([f["title"] for f in low], ["a"])
 
     def test_only_low_findings_render_the_all_clear(self):
-        # A review whose only survivors are P3/P4 posts the all-clear sentence:
+        # A review whose only survivors are P3 posts the all-clear sentence:
         # the automated loop must read it as ready to merge, not as unreviewed.
         findings = [
             {"path": "a", "severity": "P3", "title": "a", "body": "."},
-            {"path": "b", "severity": "P4", "title": "b", "body": "."},
+            {"path": "b", "severity": "P3", "title": "b", "body": "."},
         ]
         posted, low = drop_low_priority(findings)
         self.assertEqual(posted, [])
@@ -171,12 +172,11 @@ class TestFindings(unittest.TestCase):
         body = render_summary("abcdef12345", posted, [])
         self.assertIn("no new issues found", body)
         self.assertNotIn("P3", body)
-        self.assertNotIn("P4", body)
 
 
 class TestRendering(unittest.TestCase):
     def test_badge_markup_and_colors(self):
-        for sev, color in (("P1", "orange"), ("P2", "yellow"), ("P3", "lightgrey"), ("P4", "lightgrey")):
+        for sev, color in (("P0", "red"), ("P1", "orange"), ("P2", "yellow"), ("P3", "lightgrey")):
             body = render_comment_body({"severity": sev, "title": "Fix it", "body": "Because."})
             self.assertTrue(body.startswith(
                 f"**<sub><sub>![{sev} Badge](https://img.shields.io/badge/{sev}-{color}?style=flat)</sub></sub>  Fix it**"
@@ -244,10 +244,10 @@ class TestRendering(unittest.TestCase):
         self.assertEqual(lines[-1], f"<!-- {SIGNATURE} -->")
 
     def test_summary_folds_only_finding_titles(self):
-        folded = [{"path": "x.py", "line": 7, "severity": "P4", "title": "Tidy the thing", "body": "."}]
+        folded = [{"path": "x.py", "line": 7, "severity": "P3", "title": "Tidy the thing", "body": "."}]
         body = render_summary("abc1234567", folded, folded, None)
         self.assertIn("Additional low-priority findings:", body)
-        self.assertIn("- **P4** `x.py:7` — Tidy the thing", body)
+        self.assertIn("- **P3** `x.py:7` — Tidy the thing", body)
 
 
 class TestTargetParsing(unittest.TestCase):
