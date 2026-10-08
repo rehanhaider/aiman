@@ -11,19 +11,16 @@ description: >-
 
 # PR Review
 
-Hunt for the ways this change breaks in production. Publish only what you can
-demonstrate.
+Find every defect this change introduces that its author would fix if they
+knew about it, and post the ones that matter.
 
-Those are two jobs with two different bars, and collapsing them is the main way
-this review goes wrong. The search is exhaustive: assume a severe defect is
-present and that your job is to find it. Publication is selective: an inline
-comment must be proved. Never let the publication bar shrink the search.
-
-The costs are not symmetric. A marginal comment costs the author half a minute
-and a "won't fix". A missed P1 ships to users. So when a candidate would be
-severe and you cannot yet prove it, spend more time — and if it is still
-unproved, hand the user the suspicion in step 9. Never silence, and never a
-relabel to P3 — P3s are not posted, so that relabel is silence wearing a badge.
+One reader does the whole review. It reads the diff and what the diff
+touches, records every candidate as it goes, admits or drops each one on
+evidence it read, and prices what survives on the P0 to P3 scale. There are
+no separate lenses and no second verifier. A candidate is dropped only on
+contrary evidence, never on the absence of a test, a document, or a
+measurement: that is how a review that read the right code still posts "no
+new issues found".
 
 Keep source code read-only. Do not edit code, commit, push, or resolve threads.
 For a GitHub PR review, posting the review outcome is the deliverable. Post it
@@ -107,278 +104,207 @@ phrase as ready to merge.
 
 Read what comes back before posting it. You own step 8 either way, so a finding
 that is wrong, out of scope, or anchored off the diff is yours to drop — arriving
-from a subprocess does not exempt it from the admission criteria in step 4.
+from a subprocess does not exempt it from the admission criteria in step 5.
 
 ## 2. Establish the contract
 
-Before judging code:
-
-1. Read repository instructions such as `AGENTS.md` or `CLAUDE.md`.
-2. Read the PR title, body, linked issue, and acceptance criteria. When the
-   body has a `## Scope` section, its two lists are the review boundary: what
-   the change promises, and what it deliberately leaves alone. Note both; step
-   4 judges candidates against them.
-3. Read existing threads. Do not duplicate an unresolved finding. Re-raise a
-   resolved finding only when the defect still exists at the reviewed SHA.
-4. Read the full diff, then the surrounding implementation, callers, callees,
-   tests, configuration, and prior behavior needed to trace the change.
-
-Treat the reviewed SHA as fixed evidence. If the head moves, re-check findings
+Read `AGENTS.md`, `CLAUDE.md`, and the documents they defer to for the
+directories the diff touches. For each record type or contract the change
+writes or reshapes, list every invariant, decision, and acceptance criterion
+that names it; each write path is checked against each of them in step 4.
+Read the PR title, body, linked issue, and the `## Scope` section if present.
+Read `threads.json`: do not duplicate an unresolved finding; re-raise a
+resolved one only if the defect is still present at the reviewed SHA. Treat
+the reviewed SHA as fixed evidence; if the head moves, re-check findings
 against the new head before posting.
 
-### Every pass reviews the whole pull request
+Every pass reviews the whole pull request. `diff.patch` is the PR against its
+base, and that is the scope on the first review and on every re-review.
+Existing threads say what not to repeat; they never narrow what to read. A
+file cleared at an earlier SHA can be broken by a later commit, and a file the
+newest commit does not touch still ships. Dedup against prior findings; never
+inherit their coverage.
 
-`diff.patch` is the pull request against its base, not the newest commit, and
-that is the review scope on every pass — the first and every re-review alike.
+## 3. Build the read plan
 
-On a re-review, existing threads tell you what not to repeat. They do not narrow
-what to read. Never scope a pass to "the commits since my last review": a file
-you cleared at an earlier SHA can be broken by a later commit, and a file the
-newest commit does not touch is still shipping in this pull request. Whatever
-merges is the whole diff, so that is what must be reviewed.
+From `diff.patch`, list every changed behaviour (group hunks that implement one
+thing, but keep initial load, manual retry, recovery, and each other entry
+point as separate lines). For each, write one line naming: the changed
+symbols, the callers, callees and data consumers you will open, the tests that
+claim it, the rule section that governs it, and whether it holds state. Find
+consumers by searching changed symbols, field names, storage keys and formats,
+so copied records and caches appear. Prioritize writes, authorization, side
+effects, recovery, and changed public contracts.
 
-Dedup against prior findings; never inherit their coverage.
+Keep one reviewer while the diff, contracts, code and thread history fit about
+120,000 tokens of a 200,000-token window. Beyond that, split into the fewest
+coherent slices that fit and run steps 4 to 6 once per slice in separate
+agents given the same contract and this method. Assign every dependency that
+crosses slices to one reviewer who reads both ends and their contract, and
+check that list before merging findings. Never split by role.
 
-For a large PR, make a private risk map and inspect high-risk surfaces first:
-trust boundaries, writes, migrations, public interfaces, startup/configuration,
-and concurrency. State any material unreviewed area in the final chat response;
-do not pretend a skim was complete.
+Batch independent reads into one call and read ranges, not whole files. The
+parent and every slice count against one budget. A budget never excuses an
+all-clear with an unread dependency; if the evidence exceeds it, finish the
+review and record the overrun.
 
-## 3. Fan out into independent lenses
+## 4. Read and record
 
-One reviewer hunting for everything finds the obvious and stops. Run these
-lenses **separately and blind to each other** — as subagents where the harness
-provides them, otherwise as distinct passes that each start from the diff rather
-than from the last pass's conclusions. A lens that inherits another lens's
-reasoning stops being independent, and independence is the entire point.
+Walk the plan. For each behaviour read the hunk, then the surrounding
+implementation, then the callers, callees and consumers named in the plan,
+then the tests. Trace before and after. Record a candidate the moment you see
+it, in a private ledger, as: anchor, trigger, actual result, expected result,
+evidence read. Keep reading after each one. Use `git log` or `git blame` only
+to answer a specific question a hunk raised.
 
-| Lens | Job |
-| --- | --- |
-| **Repository rules** | Read `AGENTS.md`, `CLAUDE.md`, and the documents they defer to. Report every rule this change violates, quoting the rule with its file, line, **and the heading it sits under**. A violated written rule is a finding on its own; it does not also have to be a bug. A rule inherits the scope of its section — "encrypt everything at rest" under a cloud-infrastructure heading governs that infrastructure, not a phone's local store. |
-| **Diff-only** | Read the changed hunks and nothing else. Report obvious defects. Deliberately shallow: this lens exists to catch what deep reading talks a reviewer out of. |
-| **Blast radius** | For every symbol, route, table, config key, unit, encoding, or format the diff changes, find its other producers and consumers and read them. This lens owns the correct-diff/broken-system class and anything the change newly makes reachable. |
-| **History** | `git log` and `git blame` the modified lines. What was the code being changed there to guard against? Has this been fixed before and re-broken? |
-| **Prior review** | Earlier pull requests touching these files, and the comments left on them. A concern reviewers raised before usually applies again. |
-| **Tests versus claims** | Does a test pin each behavior the PR claims, and would it fail if the claim broke? Weak assertions, timing-dependent passes, shared mutable state, and a mock that encodes the wrong behavior all count. |
+Run these checks on every behaviour; each one recovered defects that a
+behaviour-level read missed.
 
-Give the bug-hunting lenses this as their shared checklist:
+- **Hunk audit.** Read each hunk line by line. For every constant, bound,
+  minimum, enum, default, regex, ordering of checks, and comment that promises
+  a behaviour, ask what the governing document, the product data it names, or
+  the code's own comment requires, and open that source. A limit the product's
+  own data violates, a comment that promises a check the code lacks, a
+  minimum nobody specified, and a 403 that a documented ordering says must be
+  a 400 are all candidates.
+- **Invariant sweep.** For each invariant listed in step 2, walk every write
+  path in the diff that can violate it, including paths the invariant does not
+  name. A document that states "at least one Operator" governs the Admin
+  creation path even when it only mentions Operators.
+- **Contract parity.** For each request or response shape the change produces
+  or consumes, open the other side's parser, schema, or type (client schema,
+  shared types, mobile types, a test that compares them) and compare root,
+  field names, optionality, and clearing semantics. A test that compares a
+  copy against a copy proves nothing; record it.
+- **Fixture and mock parity.** When the change adds a durable or production
+  implementation beside a fixture, mock, or earlier adapter, list every
+  refusal, validation message, field attribution, and projection the earlier
+  one made and confirm the new path makes the same decision. A refusal the
+  fixture made and the durable path omits is a candidate.
+- **Tests versus claims.** For each test behind a claimed behaviour, confirm
+  its assertions execute and would fail on regression: no swallowed rejection
+  before the assert, no assert inside a condition that can be false, no fake
+  that ignores the conditions it says it honours. A test that cannot fail is
+  a candidate anchored on the test, priced by what it leaves unproved.
+- **Asynchronous operations.** For each one, open its callee and trace success
+  and rejection through the caller to the visible or durable result. `void`
+  and `finally` do not count as handling a rejection. Trace the specified
+  production adapter even when today's only implementation is a fixture that
+  never rejects.
+- **State.** For anything that holds state, trace three more paths per entry
+  point: the operation interrupted, a stale result arriving after the state
+  moved, and two operations in flight at once; at each result write, check
+  that its request and owner are still current. Include route parameter
+  changes that keep the component mounted.
+- **Stored fields and copies.** For each changed stored field or format, trace
+  the write through copied records, summaries, caches and projections to
+  their readers. A copy that a reader shows and the write does not update is
+  a candidate even when the copy is a fixture.
+- **Siblings.** For each claimed behaviour, enumerate the supported sibling
+  cases and trace them; record a gap when the code and the applicable
+  contract establish one.
+- **Cost.** For a loop over user-sized data, state the shape and the scale at
+  which it fails (quadratic over a Register of thousands); if the shape is
+  clear, the lack of a measurement is not a reason to drop it.
 
-| Dimension | Questions |
-| --- | --- |
-| Contract | Does every stated behavior and supported entry point work? |
-| Data and state | Are writes atomic, ordered, idempotent, correctly scoped, and serialized with the right units? |
-| Security and privacy | Is authentication, authorization, tenant isolation, validation, and secret handling enforced on every path? |
-| Reliability | What happens on failure, retry, cancellation, timeout, duplicate delivery, or concurrent use? |
-| Interfaces and release | Do callers, clients, schemas, migrations, configuration, and supported platforms remain compatible? |
-| Performance and resources | Does realistic load cause unbounded work, N+1 access, leaks, or exhausted pools? |
+## 5. Admit or drop each candidate
 
-Two search patterns worth naming, because they produce the most findings:
+A candidate becomes a finding when all of these hold (Codex's rules, with the
+Scope rule added):
 
-- **Claim gaps.** For each thing the PR claims — title, body, tests, comments,
-  config — where does the diff fail to deliver it? Handling one form but missing
-  an obvious sibling is the highest-value class: ESM `import` but not
-  `require()` or dynamic `import()`; TCP listeners but not Unix sockets; one
-  entry point when there are two.
-- **Classic defects** where the diff touches them: races, cancellation, and
-  stale async results; unvalidated input reaching queries, shell commands, or
-  paths; N+1 access and hot-path work; swallowed errors; off-by-one;
-  exhaustiveness and type-narrowing gaps.
+1. It meaningfully impacts the accuracy, performance, security, or
+   maintainability of the code.
+2. It is discrete and actionable, not a general concern.
+3. Fixing it does not demand rigor absent from the rest of the codebase.
+4. Comparing the same supported scenario at base and head, the change creates
+   it, worsens it, or newly makes it reachable. Unchanged code that this
+   change calls for the first time counts as introduced. A broken specified
+   use of new code counts. A touched line, a desired hardening, or a deferred
+   feature alone does not.
+5. The author would likely fix it if made aware of it. This is the test that
+   decides; the others only shape it.
+6. It does not rest on an unstated assumption about the code or the author's
+   intent. "The author chose this constant or ordering on purpose" is itself
+   an unstated assumption unless a document or the PR body records the
+   choice.
+7. You identified the code that is provably affected, not speculated that
+   something might be.
+8. The expected behaviour you are asserting agrees with the governing
+   document section, its scope and exceptions, and recorded owner decisions.
+   Quote that source for a rule-based finding. Do not flag behaviour it
+   explicitly permits. A document that states an invariant governs every path
+   that can violate it, even paths it does not name.
+9. When the PR body carries a `## Scope` section, acting on it would change a
+   line the diff touches or satisfy a listed criterion. A defect the diff
+   introduces is always in scope, whatever file it lives in.
 
-Blast radius means reading code the diff does not touch:
+Drop a candidate only on contrary evidence that you read, and name it: an
+upstream guard that blocks the trigger, a document section that permits the
+outcome, base behaviour that is the same for the same scenario, a caller that
+cannot produce the trigger, or a test that already proves the behaviour. These
+are not contrary evidence and never justify a drop:
 
-```bash
-rg -n --hidden -g '!.git' '<changed symbol, key, or format>'
-```
+- no test exercises the path;
+- today's only implementation is a fixture or mock that cannot fail; trace
+  the specified production adapter and judge by its consequence;
+- the author chose the constant, message, or ordering, when no document
+  records that choice;
+- the document is silent on the exact case while stating an invariant or a
+  rule the outcome violates;
+- the window is narrow, or the fixture resolves in a microtask;
+- you could not measure it, when the mechanism and the failing scale are
+  clear;
+- the fix belongs to another issue, when the defect is in this diff;
+- the defect is in unchanged code that this change reaches for the first
+  time.
 
-Each lens returns candidates as: anchor, what is wrong, why it was flagged, and
-what it actually read. Do not stop at the first qualifying candidate — a lens
-returns everything it found. Pool them all before judging any of them.
+When two documents appear to conflict, the one that defines the contract
+(data model, API conventions, product spec) governs over a status list of
+what currently honours it; say which you applied. When the evidence is
+incomplete, state in the body what you verified and what you assumed, and
+admit the finding if the author would still fix it. Do not score; decide.
+An unresolved P0 or P1-class candidate withholds the all-clear sentence:
+carry it to step 8 as a suspicion, with the one check that would settle it.
 
-Do not build, typecheck, or run the suite in order to *find* candidates. CI does
-that, and it is where the reviewer's time disappears. Run something only to
-settle a specific candidate in step 4.
+Never a finding: a pre-existing problem the change does not worsen and does
+not newly reach, a style preference, missing tests with no concrete regression
+path, a design you prefer, or a diagnostic that a linter or type checker in CI
+already reports.
 
-## 4. Verify each candidate independently
+## 6. Price and check coverage
 
-**The lens that found a candidate never clears it.** Verify each one in a fresh
-context — a separate subagent where available — given the candidate, the diff,
-and the repository rules, and nothing about who raised it or why they were
-confident.
+Read [references/severity.md](references/severity.md). Assign once, from
+consequence and exposure, using these definitions and no others. The script
+posts P0, P1 and P2 and records P3.
 
-**Score whether the claim is true, not whether it matters.** A real but trivial
-defect scores exactly as high as a real and catastrophic one. Step 5 prices
-findings, and step 5 only ever sees what this step lets through — so importance
-reasoning here deletes severe findings before anything can price them.
+- **P0** Drop everything to fix. Blocking release, operations, or major
+  usage. Only for universal failures that do not depend on inputs.
+- **P1** Urgent. Should be addressed in the next cycle.
+- **P2** Normal. To be fixed eventually.
+- **P3** Low. Nice to have.
 
-Each verifier scores 0–100 against this rubric, used verbatim:
+P2 is the floor for any admitted defect: wrong output, lost input, an
+unhandled rejection, a violated document or contract, a copy a reader shows
+stale, a test that cannot fail. P3 is for wording, naming, stale comments, and
+maintainability notes with no behaviour path. A consequence that is dev-only
+today but inherited by the specified production adapter is priced by the
+production consequence. Do not lower a priority because the window is narrow,
+the fixture is instant, the fix is small, or the evidence is thin; resolve
+the evidence or drop the finding. The P0 and P1 shapes in the severity reference
+illustrate those tiers; they do not make every introduced defect a P1.
 
-- **0** — Refuted. You read the code and it does not do what the candidate says.
-- **25** — Unverifiable from here; the evidence needed was not available.
-- **50** — Probably true, but a link in the chain is assumed rather than read.
-- **80** — Verified. You read the code and the claim is accurate. For a rule
-  violation: the rule says one thing and this code does another.
-- **100** — Verified, and the failure path traced end to end or reproduced.
+Then one bounded coverage check against the plan: a hunk not audited line by
+line, an invariant not walked, a changed symbol whose consumers were not
+opened, a contract without its other side compared, a fixture decision not
+checked against the durable path, a test not checked for executing
+assertions, an async operation without its rejection trace, a stateful entry
+point without its three traces, a changed stored field not followed to its
+readers. Close those gaps and stop. An empty result after a completed plan is
+a result.
 
-**Drop everything below 80.**
+## 7. Write findings
 
-None of the following is a refutation. Each is a real reason a true finding gets
-wrongly killed:
-
-- **Other code in the repository already does the same thing.** Precedent is not
-  compliance. The rule still says what it says, and this change is still adding
-  another violation.
-- **The consequence looks small,** or smaller than the rest of the PR. That is
-  severity. Score the truth and let step 5 decide it is a P3.
-- **The rule could be read more narrowly.** Read it as written. If it genuinely
-  does not cover this case, score 0 and name the words you relied on — do not
-  narrow a rule to dispose of a candidate.
-
-  The reverse is equally wrong, and is the more common failure: a rule read
-  wider than the section it lives under. Open the file and check what the
-  heading above the rule is about. A rule under "Infrastructure" saying "encrypt
-  at rest everywhere" governs the infrastructure, however absolute the wording;
-  applying it to a different layer invents a requirement nobody wrote. When the
-  cited rule does not govern the surface under review, score **0** and say which
-  section it belongs to.
-- **It is hard to trigger.** Reachability belongs to the admission criteria
-  below, not to whether the claim is true.
-
-For a repository-rule candidate, open the cited file and check the rule against
-the code. A rule paraphrased into something it does not say scores 0. A rule
-that says what the candidate claims, against code that does otherwise, is
-verified at 80 — whatever you think of the rule.
-
-Confidence is not severity. This gate decides whether a defect is **real**;
-step 5 decides what it **costs**. Never let a low score become a low priority,
-and never let a severe consequence inflate a score.
-
-A candidate that survives at 80+ becomes an inline comment only when all of
-these hold:
-
-1. **Introduced:** the change creates it, worsens it, or newly exposes it. A
-   pre-existing defect this change makes reachable *is* introduced — a new
-   caller of an unvalidated helper, a removed guard that made a bad branch dead,
-   a flag flipped on.
-2. **Reachable:** name a supported input, state, call path, or environment that
-   triggers it. For code the change adds for others to call — a guard,
-   middleware, helper, endpoint, exported type — reachability is its **intended
-   use**, not its current call count. "Nothing mounts it yet" is what shipping a
-   broken guard looks like on the day it lands; the callers arrive next week and
-   the defect is already merged.
-3. **Consequential:** name the incorrect user or system outcome. The test is
-   whether you can *name* one, not whether it is big. A small named consequence
-   is a P3 finding, not a dropped one.
-4. **Actionable:** identify the broken boundary and a plausible fix direction.
-   And **warranted** — say what makes the behaviour you are asking for required.
-   Exactly one of: a stated requirement (a rule that governs *this* surface, a
-   spec, an acceptance criterion, an existing contract), or a demonstrated
-   failure of code that already exists. Absent both, you are asking for a
-   different design, not reporting a defect. "This should be encrypted",
-   "this should be validated", "this needs a retry" are preferences until
-   something in the repository asks for them or something concretely breaks
-   without them.
-5. **Anchored:** cite the changed line closest to the defect. When the defect
-   lives in an unchanged file, anchor on the changed line that exposed it and
-   name the real location in the body. That the bad line sits outside the diff
-   tells you where to anchor, never whether to report.
-6. **Inside the boundary:** when the PR body carries a `## Scope` section, a
-   candidate is out of scope if acting on it would change no line the diff
-   touches and no listed acceptance criterion depends on it — hardening the
-   change never claimed, a pre-existing defect the diff neither caused nor
-   exposed, a feature the issue did not ask for. Drop it with the ledger reason
-   `out-of-scope`. The boundary never covers a defect the diff introduces or
-   newly makes reachable, whatever file it lives in: criterion 1 already made
-   that in scope, and an "out of scope" list cannot take it back out.
-
-**These criteria are not a second severity filter.** They ask whether there is a
-finding at all, not whether it is worth anyone's time — step 5 decides that, and
-step 5 only sees what survives here. If you catch yourself dropping a verified
-defect because the impact seems minor, the codebase does this elsewhere, or it
-is "only" a convention violation, you are pricing it. Confirm it and let step 5
-price it at P3 or P4.
-
-Known false positives, worth naming so verifiers kill them fast:
-
-- A pre-existing problem this change leaves untouched — *unless* the change
-  makes it reachable, more likely, or worse, which is criterion 1.
-- Anything a linter, type checker, compiler, or test run would catch. CI runs.
-- Pedantic nitpicks a senior engineer would not raise.
-- General code-quality complaints — thin tests, weak docs, vague security
-  unease — unless a repository rule requires it.
-- Hardening the change never claimed to do. Storing data locally is not a defect
-  for want of encryption, and a new endpoint is not defective for want of a rate
-  limit, unless this repository asks for it on this surface or you can show what
-  breaks without it. Best practice from elsewhere is not this project's
-  requirement.
-- A rule cited from a section that governs a different layer. Check the heading.
-- A rule violation that the code explicitly and deliberately silences.
-- Behavior changes that are plainly intentional and central to the PR.
-
-Keep a private ledger through steps 3–5:
-
-```text
-anchor | lens | what is wrong | confidence | price-if-true | status
-```
-
-`status` is `confirmed`, `dropped (reason)`, or `unproved-severe`. Every
-candidate any lens raised gets a row, including the ones you kill. The ledger is
-never published; its `unproved-severe` rows all reach step 9.
-
-## 5. Price the survivors
-
-Read [references/severity.md](references/severity.md) before assigning
-priorities.
-
-Run the P1 gate first for every survivor. Ask whether the reachable defect can
-break a core supported flow, bypass a security or tenant boundary, corrupt or
-lose data, repeat an irreversible side effect, prevent deployment or startup, or
-make the PR's central guarantee false. If yes, classify it P1 unless the
-severity reference clearly places its limited impact in P2.
-
-Do not start at P3 and wait for extraordinary proof to move upward. Do not
-downgrade because the fix is small, the faulty line looks harmless, a test
-passes, or the review would otherwise contain a P1.
-
-Priority describes impact and exposure. Confidence describes whether the finding
-is proved, and step 4 already settled it. Never collapse the two: a defect that
-scored 85 and would take the service down is a P1, not a P3 with reservations.
-
-**Only P1 and P2 reach the pull request.** The script drops P3/P4 at post time:
-a review padded with deferrable notes buries the finding that matters. P3/P4
-survivors stay in the ledger and get one line each in the step 9 report. That
-makes the P2/P3 boundary the posting decision, so take it from the severity
-reference alone — do not lift a P3 to P2 to make it visible, and do not park a
-P2 at P3 to avoid defending it. Pass `--include-low` to `post` only when the
-user explicitly asks for the low tiers.
-
-A candidate whose consequence would be P1 or P2 but which could not clear 80
-does not vanish. It goes to step 9 as an unproved severe suspicion, with the one
-check that would settle it. Silence is not available for that class.
-
-After pricing everything, make a second severity-only pass: compare each finding
-with its neighbors and with the archetypes in the reference.
-
-## 6. Attack the silence
-
-Step 4 attacked the findings. This step attacks the conclusion that everything
-else is fine, which is the failure a quiet review cannot see.
-
-For each P1 archetype in the severity reference that this change plausibly
-touches, name the specific code you read that rules it out. If you cannot name
-it, you have not ruled it out; go read it.
-
-A review with no P1 and no P2 is a hypothesis, not a result. Before accepting
-one, account to yourself for each of: authorization and tenant scope, data
-durability, units and encodings, retry and idempotency, resource bounds,
-producer/consumer compatibility, and deploy or migration safety. For each, name
-either the code that makes it safe or the reason the change does not touch it.
-"I did not think about it" is neither.
-
-Confirm every surviving anchor is part of the PR diff before writing findings.
-
-## 7. Write concise findings
-
-Write `findings.json`:
+`findings.json`:
 
 ```json
 [
@@ -393,22 +319,21 @@ Write `findings.json`:
 ]
 ```
 
-For each inline comment:
+Include every admitted finding, P3 too: the script posts P0 to P2 and drops
+P3, so a low tier in this file costs nothing on the pull request and an
+inflated tier does. Keep P3 bodies to one sentence. Anchor on the changed line
+closest to the defect; when the defect lives in an unchanged file, anchor on
+the changed line that exposed it and name the real location in the body.
 
-- Use an imperative title that names the required correction.
-- Keep the body to 2–4 sentences and at most 120 words.
-- State the trigger, incorrect outcome, and fix boundary.
-- Tie P1/P2 findings to the affected user, data, security boundary, or release.
-- Omit greetings, praise, test transcripts, review history, and reasoning logs.
-- Keep one root cause per thread.
-
-Include every priced survivor, P3/P4 too: the script posts only P1/P2 and drops
-the rest, so a low tier in this file costs nothing on the pull request — an
-inflated tier does. Keep P3/P4 bodies to a single sentence; they exist for the
-record and for `--include-low`, not for the review.
-
-The script supplies badges and summary formatting. See
-[references/codex-format.md](references/codex-format.md) for the exact output.
+Title: imperative, at most 80 characters, naming the correction. Body: one
+paragraph of two to four sentences, at most 120 words. First sentence states
+the trigger ("When …", "If …", or the input that causes it). Second states the
+incorrect outcome and who it reaches. Last names the fix boundary. When a rule
+supports the finding, end with one reference line:
+`AGENTS.md reference: <path>#L<start>-L<end>`. No code blocks over three
+lines, no praise, no history. The script supplies badges and the summary; see
+[references/codex-format.md](references/codex-format.md) for the rendered
+output.
 
 ## 8. Dry-run, then post
 
@@ -419,8 +344,8 @@ python3 <skill>/scripts/pr_review.py post --workdir <workdir> \
   --findings-file findings.json --suspicions-file suspicions.json --dry-run
 ```
 
-Write `suspicions.json` from the ledger's `unproved-severe` rows — omit the flag
-only when there are none:
+Write `suspicions.json` from the step 5 candidates that are P0 or P1-class and
+could not be resolved — omit the flag only when there are none:
 
 ```json
 [
@@ -486,14 +411,15 @@ python3 <skill>/scripts/pr_review.py cleanup --workdir <workdir>
 Then respond with:
 
 1. The verdict, the reviewed SHA, and which reviewer read the diff.
-2. Posted findings ordered P1 → P2, or “No findings.” Then any P3/P4
-   survivors, one line each, marked as recorded but not posted.
+2. Posted findings ordered P0 → P2, or “No findings.” Then any P3 findings,
+   one line each, marked as recorded but not posted.
 3. **Unproved severe suspicions** — confirmation of what you posted, not the
    delivery mechanism. They go on the pull request via `--suspicions-file`
    (step 8), because an automated loop can only act on what GitHub shows it.
    A suspicion left in chat is a suppressed P1 that nobody will ever read.
-4. Coverage: which P1 archetypes you ruled out by reading code, plus any
-   material validation limit or unreviewed high-risk area.
+4. Coverage: the step 6 result. Name any hunk, invariant, consumer, contract
+   side, fixture decision, test, async operation, state entry point, or stored
+   field left unchecked, any budget overrun, and any unreviewed area.
 5. The GitHub review link. If posting was explicitly suppressed or failed, say
    so instead.
 
@@ -501,5 +427,5 @@ Do not repeat inline-comment bodies or publish the private candidate ledger.
 
 ## References
 
-- [Severity decision ladder and archetypes](references/severity.md)
+- [Severity scale and the P0 and P1 shapes](references/severity.md)
 - [Rendered GitHub comment format](references/codex-format.md)
