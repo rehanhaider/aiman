@@ -83,13 +83,17 @@ SEVERITIES = ("P1", "P2", "P3", "P4")
 SIDES = ("RIGHT", "LEFT")
 
 
+# opencode_review.py reuses the parsing below, so name whichever script ran.
+PROG = Path(sys.argv[0]).stem or "cursor_review"
+
+
 def die(msg: str, code: int = 1) -> None:
-    print(f"cursor_review: {msg}", file=sys.stderr)
+    print(f"{PROG}: {msg}", file=sys.stderr)
     raise SystemExit(code)
 
 
 def note(msg: str) -> None:
-    print(f"cursor_review: {msg}", file=sys.stderr, flush=True)
+    print(f"{PROG}: {msg}", file=sys.stderr, flush=True)
 
 
 # ---------------------------------------------------------------- prompt
@@ -130,7 +134,8 @@ object:
 """
 
 
-def build_prompt(state: dict, workdir: Path, method: str, worktree: str | None) -> str:
+def build_prompt(state: dict, workdir: Path, method: str, worktree: str | None,
+                 reviewer: str = "cursor") -> str:
     repo, pr, head = state.get("repo"), state.get("pr"), state.get("head_sha", "")
     if worktree:
         source = f"    head/        — read-only worktree of the reviewed commit at {worktree}"
@@ -152,7 +157,7 @@ skill, and it is the method for this review — not a summary to skim.
 ## How this run differs from that method
 
 - **You are the reviewer.** The method's `--reviewer` argument has already been
-  resolved — you are what `cursor` resolves to. Ignore that section, and do not
+  resolved — you are what `{reviewer}` resolves to. Ignore that section, and do not
   delegate the reading to another agent.
 - Steps 1 and 8 are already done for you. Do not run `pr_review.py`. Do not post
   anything to GitHub, and do not use `gh` for any write operation.

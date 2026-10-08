@@ -5,7 +5,7 @@ description: >-
   in-repo document — through implementation, a pull request, and a self-driving
   review-and-rectify loop, stopping at a verified ready-to-merge state. It
   merges only under --merge, and only a clean PR. The reviewer is local,
-  Cursor, or Codex. Use when the user asks to ship, land, or implement an
+  Cursor, OpenCode, or Codex. Use when the user asks to ship, land, or implement an
   issue end to end, to shepherd or babysit a pull request through review, to
   keep resolving review comments until a PR is clean, or invokes "/forge" or "/ship-issue". With --hitl, the run
   splits the work into an approved plan. Each tranche waits uncommitted for
@@ -53,7 +53,7 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
 ## Arguments
 
 ```text
-/forge <issue-ref> [--reviewer local|cursor|codex] [--pr <number>] [--cycles <n>] [--hitl] [--merge]
+/forge <issue-ref> [--reviewer local|cursor|opencode|codex] [--pr <number>] [--cycles <n>] [--hitl] [--merge]
 ```
 
 - `issue-ref` — a Linear key, GitHub issue number, document path, or plain
@@ -64,9 +64,10 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
   | --- | --- |
   | `local` (default) | the `pr-review` skill, run by a subagent started with fresh context |
   | `cursor` | `cursor-agent` running the same method, out of process |
+  | `opencode` | `opencode` running the same method on Muse Spark 1.3 (free, OpenCode Zen), out of process |
   | `codex` | `@codex` on GitHub |
 
-  One reviewer per run. Every posted review from `local` or `cursor` opens
+  One reviewer per run. Every posted review from `local`, `cursor`, or `opencode` opens
   with a note naming who read the diff, as harness/model — `Claude/Opus-5`,
   `Cursor/Grok-4.7` — so the PR's history says which model said what.
 
@@ -193,8 +194,8 @@ Out of scope:
 - <behaviour in the touched files that this change does not alter>
 ```
 
-It is the one thing every reviewer reads: `pr-review` stages it for `local`
-and `cursor`, and Codex reads the PR description. A comment that asks for
+It is the one thing every reviewer reads: `pr-review` stages it for `local`,
+`cursor`, and `opencode`, and Codex reads the PR description. A comment that asks for
 work outside it is answered from it (phase 6), so write it as the contract
 you are prepared to hold the review to. It never excuses a defect the
 diff introduces: a bug in an "out of scope" file that this change caused or
@@ -252,6 +253,13 @@ that as no review at all** — re-run it, or fall back to `local`. Never post an
 empty `findings.json` that came from a run which exited non-zero: that publishes
 the all-clear sentence over a review that never happened.
 
+**`opencode`** — the same as `cursor`, through `opencode_review.py` and
+`--reviewer opencode`. It runs Muse Spark 1.3, free tier, on OpenCode Zen
+(`opencode/muse-spark-1.3-contributor-free`) unless `--model` says otherwise,
+under a permission config that denies edits and allows only read-only shell
+commands. The default `signed_by` label is
+`OpenCode/Muse-Spark-1.3-Contributor`. Exit 3 means the same as for `cursor`.
+
 **`--signed-by` is the visible label, not the machine signature.** `post`
 renders it as a note at the top of the review (`🤖 Reviewed by Claude/Opus-5`)
 and always adds the hidden marker `pr_watch.py` keys on as an HTML comment, so
@@ -261,7 +269,7 @@ Keep the review URL that `post` prints on success — phase 5 uses it to prove
 this specific review landed.
 
 If `pr_review.py post` exits 3, whether the subagent reports it or `cursor`
-hits it, the head moved while the review was being written. Do not retry the
+or `opencode` hits it, the head moved while the review was being written. Do not retry the
 post — review the new head from the beginning. After two consecutive head
 moves, stop and tell the user something keeps pushing to the branch.
 
@@ -297,7 +305,7 @@ Reviewers other than Codex: known bots (coderabbit, gemini, copilot) and any
 `[bot]` account also wake the wait but never grade clean on their own; extend
 recognition with `--reviewer-bot` or a full `--attest-profile`.
 
-For `local` and `cursor`, the review is already posted, so read the state —
+For `local`, `cursor`, and `opencode`, the review is already posted, so read the state —
 passing the URL from phase 4, so that a silently failed review cannot read as
 clean:
 
@@ -309,9 +317,9 @@ python3 <skill>/scripts/pr_watch.py state <number> --repo <owner/name> \
 The signature is required by default, so nothing extra to pass here. An
 external reviewer that answers in text signs its own way, which is why the
 `codex` command above carries `--allow-unsigned`; never add that flag on the
-`local` or `cursor` paths, as it removes the only thing separating an automated
-review from a typed comment. Both of those post through `pr_review.py`, so both
-are already signed — the marker is a hidden HTML comment, so its absence from
+`local`, `cursor`, or `opencode` paths, as it removes the only thing separating
+an automated review from a typed comment. All three post through `pr_review.py`,
+so all three are already signed — the marker is a hidden HTML comment, so its absence from
 the rendered page means nothing.
 
 Both print one JSON object. The fields that drive the decision:

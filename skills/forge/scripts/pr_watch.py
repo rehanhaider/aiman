@@ -403,8 +403,8 @@ def comment_attestation(
 
     A clean grade requires the profile's exact all-clear line AND a commit
     reference matching the current head — a statement that does not name what
-    it reviewed cannot attest anything. A signature requirement (local/cursor
-    modes) keeps unsigned bot prose out of "clean" entirely."""
+    it reviewed cannot attest anything. A signature requirement (local/cursor/
+    opencode modes) keeps unsigned bot prose out of "clean" entirely."""
     profile = profile_for(comment.get("author"), profiles)
     if profile is None:
         return None

@@ -37,15 +37,16 @@ requires an authenticated `gh` CLI.
 ## Arguments
 
 ```text
-/pr-review [target] [--reviewer local|cursor]
+/pr-review [target] [--reviewer local|cursor|opencode]
 ```
 
 - `target` — a PR URL, PR number, or branch; omit it to use the current branch.
 - `--reviewer` — who reads the diff. `local` (default) is you, running steps 2–7
-  in this context. `cursor` hands those steps to `cursor-agent` running this
-  same method out of process, then returns here for step 8.
+  in this context. `cursor` and `opencode` hand those steps to `cursor-agent` or
+  `opencode` running this same method out of process, then return here for
+  step 8.
 
-Both modes post identically, so the choice is about who does the reading, not
+All modes post identically, so the choice is about who does the reading, not
 about what lands on GitHub.
 
 ## 1. Gather the review
@@ -77,21 +78,26 @@ If there is no open PR, stop unless the user explicitly requested a pre-PR
 review. For a pre-PR review, inspect the merge-base diff locally and do not
 post.
 
-### When `--reviewer` is cursor
+### When `--reviewer` is cursor or opencode
 
-Hand steps 2–7 to `cursor-agent` and pick this up again at step 8:
+Hand steps 2–7 to the agent CLI and pick this up again at step 8:
 
 ```bash
-python3 <skill>/scripts/cursor_review.py --workdir <workdir>
+python3 <skill>/scripts/cursor_review.py --workdir <workdir>     # cursor
+python3 <skill>/scripts/opencode_review.py --workdir <workdir>   # opencode
 ```
 
-It uses Cursor's automatic model selection (`--model auto`) unless `--model`
-says otherwise. It runs read-only over the context gathered above, with this
-same method as its prompt.
-It writes `findings.json` and `suspicions.json` into the workdir in the schema
+`cursor_review.py` uses Cursor's automatic model selection (`--model auto`).
+`opencode_review.py` uses Muse Spark 1.3, free tier, on OpenCode Zen
+(`--model opencode/muse-spark-1.3-contributor-free`), and runs under a
+permission config that denies edits and allows only read-only shell commands.
+Either takes `--model` to override. Both run read-only over the context
+gathered above, with this same method as its prompt.
+Each writes `findings.json` and `suspicions.json` into the workdir in the schema
 step 8 validates, and prints a summary whose `signed_by` is the harness/model
-label to post under (`Cursor/Auto` by default). `Auto` names the selection
-mode; it does not identify the underlying model Cursor chose.
+label to post under (`Cursor/Auto` or `OpenCode/Muse-Spark-1.3-Contributor` by
+default). `Auto` names the selection mode; it does not identify the underlying
+model Cursor chose.
 
 Exit 3 means the agent said it could not complete the review. **That is not an
 empty review.** Re-run it, or fall back to `--reviewer local` and read the diff
@@ -457,6 +463,7 @@ reader can tell which one did:
 ```bash
 --signed-by 'Claude/<the model running this session, e.g. Opus-5>'   # --reviewer local
 --signed-by '<the signed_by that cursor_review.py printed>'          # --reviewer cursor
+--signed-by '<the signed_by that opencode_review.py printed>'        # --reviewer opencode
 ```
 
 `post` renders it as a note at the top of the review — `🤖 Reviewed by
