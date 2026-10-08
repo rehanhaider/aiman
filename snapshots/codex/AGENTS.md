@@ -111,6 +111,12 @@ Standing constraints already given:
 - Keep the main answer under 250 words unless detail was requested. Put supporting analysis after the answer.
 - If the user says the answer is unclear, restart from the concrete scenario. Do not paraphrase the same abstraction.
 
+## Diagrams
+- If an answer has structure (a flow, parts, a layout, a sequence, or before/after), explain it with a diagram, not paragraphs. Keep text to labels and a few lines.
+- Use an inline SVG by default: save it to ~/.cache/<topic>/ and embed it with ![alt](/absolute/path.svg).
+- Use HTML only when the diagram needs interaction or many views. On a remote host, give the path; don't open it.
+- Never draw ASCII art. No Mermaid unless asked.
+
 ## Model steering
 
 GPT-5.6 Sol — use contract-first architecture mode:
