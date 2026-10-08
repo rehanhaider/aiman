@@ -1,4 +1,13 @@
 {
-  "skills": ["forge", "pr-review", "svg-animations", "unslop"],
-  "devices": ["PC", "thinkbox"]
+  "skills": [
+    "forge",
+    "pr-review",
+    "svg-animations",
+    "unslop"
+  ],
+  "devices": [
+    "PC",
+    "thinkbox",
+    "pi"
+  ]
 }
