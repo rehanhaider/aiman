@@ -113,9 +113,10 @@ Standing constraints already given:
 
 ## Diagrams
 - If an answer has structure (a flow, parts, a layout, a sequence, or before/after), explain it with a diagram, not paragraphs. Keep text to labels and a few lines.
-- Use an inline SVG by default: save it to ~/.cache/<topic>/ and embed it with ![alt](/absolute/path.svg).
-- Use HTML only when the diagram needs interaction or many views. On a remote host, give the path; don't open it.
-- Never draw ASCII art. No Mermaid unless asked.
+- Flows, sequences, trees and state machines: put a ```mermaid block in the reply. T3 draws it in the thread; no file is needed.
+- Anything Mermaid cannot draw (cards, mockups, tables of boxes, side-by-side comparisons): build a self-contained HTML page, check it with html_preview, then show it with T3's html_render tool. Do not draw SVG files, and do not use ![alt](/absolute/path) Markdown images; T3 does not load them.
+- Never make the user open a file, a URL or a browser to see a diagram. On a remote host, never launch a window.
+- Never draw ASCII art.
 
 ## Model steering
 
