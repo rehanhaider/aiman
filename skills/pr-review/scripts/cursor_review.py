@@ -180,10 +180,13 @@ skill, and it is the method for this review — not a summary to skim.
 def run_agent(prompt: str, model: str, workspace: str, extra_dirs: list[str],
               timeout: int) -> str:
     """Return cursor-agent's final message, or die."""
-    if not shutil.which("cursor-agent"):
+    # The resolved path, not the bare name: on Windows cursor-agent is a .CMD
+    # launcher, which CreateProcess finds only by its full name.
+    exe = shutil.which("cursor-agent")
+    if not exe:
         die("cursor-agent is not on PATH; install it or use --reviewer local")
     argv = [
-        "cursor-agent",
+        exe,
         "--model", model,
         # Read-only: the agent may read and run shell, but cannot edit the branch
         # it is reviewing.

@@ -127,10 +127,13 @@ def reviewer_label(model: str) -> str:
 def run_agent(prompt: str, model: str, workspace: str, workdir: Path,
               timeout: int) -> str:
     """Return opencode's final message, or die."""
-    if not shutil.which("opencode"):
+    # The resolved path, not the bare name: on Windows opencode is a .CMD
+    # launcher, which CreateProcess finds only by its full name.
+    exe = shutil.which("opencode")
+    if not exe:
         die("opencode is not on PATH; install it or use --reviewer local")
     argv = [
-        "opencode", "run",
+        exe, "run",
         # A private server, so the permission config below is the one in force
         # rather than whatever the background service loaded.
         "--standalone",
