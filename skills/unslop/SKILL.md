@@ -1,14 +1,17 @@
 ---
 name: unslop
-description: Cut AI tells from a piece of writing. Run only when the user explicitly invokes /unslop. Do not trigger on your own.
-model: claude-opus-5
-effort: low
-context: fork
+description: Cut AI writing patterns from a piece of writing. Load it before your first reply in a session and write every reply to the user by its rules. When the user invokes /unslop, rewrite your last reply.
 ---
 
 # Unslop
 
 Edit text to remove AI patterns and add human voice.
+
+## What to edit
+
+- If text to edit follows `/unslop`, edit that text.
+- If nothing follows `/unslop`, or only a comment such as "pls be cohesive", rewrite your most recent reply to the user. Use the comment as direction for the rewrite.
+- Send the rewritten reply as your new reply. Do not ask the user for text, and do not edit files.
 
 ## Process
 

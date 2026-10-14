@@ -94,7 +94,7 @@
     {
       "name": "unslop",
       "source": "./skills/unslop",
-      "description": "Cut AI tells from a piece of writing. Run only when the user explicitly invokes /unslop. Do not trigger on your own.",
+      "description": "Cut AI writing patterns from a piece of writing. Load it before your first reply in a session and write every reply to the user by its rules. When the user invokes /unslop, rewrite your last reply.",
       "version": "0.1.1",
       "category": "writing"
     },
