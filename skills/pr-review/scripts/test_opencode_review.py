@@ -8,6 +8,7 @@ from pathlib import Path
 
 from opencode_review import (
     DEFAULT_MODEL,
+    DEFAULT_VARIANT,
     READ_ONLY_BASH,
     SHELL_NOTE,
     agent_result,
@@ -106,6 +107,7 @@ class TestPermissions(unittest.TestCase):
 class TestReviewerLabel(unittest.TestCase):
     def test_default_model_is_muse_spark_free_on_zen(self):
         self.assertEqual(DEFAULT_MODEL, "opencode/muse-spark-1.3-contributor-free")
+        self.assertEqual(DEFAULT_VARIANT, "xhigh")
 
     def test_default_label_drops_provider_and_tier(self):
         self.assertEqual(reviewer_label(DEFAULT_MODEL), "OpenCode/Muse-Spark-1.3-Contributor")

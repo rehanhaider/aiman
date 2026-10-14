@@ -255,7 +255,8 @@ the all-clear sentence over a review that never happened.
 
 **`opencode`** — the same as `cursor`, through `opencode_review.py` and
 `--reviewer opencode`. It runs Muse Spark 1.3, free tier, on OpenCode Zen
-(`opencode/muse-spark-1.3-contributor-free`) unless `--model` says otherwise,
+(`opencode/muse-spark-1.3-contributor-free`) at reasoning effort `xhigh`
+(`--variant xhigh`) unless `--model` or `--variant` says otherwise,
 under a permission config that denies edits and allows only read-only shell
 commands. The default `signed_by` label is
 `OpenCode/Muse-Spark-1.3-Contributor`. Exit 3 means the same as for `cursor`.

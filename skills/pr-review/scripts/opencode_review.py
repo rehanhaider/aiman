@@ -37,6 +37,9 @@ from cursor_review import (
 
 # Muse Spark 1.3 on OpenCode Zen, free tier. An explicit --model overrides it.
 DEFAULT_MODEL = "opencode/muse-spark-1.3-contributor-free"
+# Reasoning effort, passed as `opencode run --variant`. An explicit --variant
+# overrides it.
+DEFAULT_VARIANT = "xhigh"
 
 HARNESS = "OpenCode"
 
@@ -124,8 +127,8 @@ def reviewer_label(model: str) -> str:
 # ---------------------------------------------------------------- invocation
 
 
-def run_agent(prompt: str, model: str, workspace: str, workdir: Path,
-              timeout: int) -> str:
+def run_agent(prompt: str, model: str, variant: str, workspace: str,
+              workdir: Path, timeout: int) -> str:
     """Return opencode's final message, or die."""
     # The resolved path, not the bare name: on Windows opencode is a .CMD
     # launcher, which CreateProcess finds only by its full name.
@@ -138,10 +141,11 @@ def run_agent(prompt: str, model: str, workspace: str, workdir: Path,
         # rather than whatever the background service loaded.
         "--standalone",
         "--model", model,
+        "--variant", variant,
         "--format", "json",
     ]
     env = {**os.environ, "OPENCODE_CONFIG_CONTENT": json.dumps(permission_config(workdir))}
-    note(f"running opencode ({model}) over {workspace}")
+    note(f"running opencode ({model}, {variant}) over {workspace}")
     try:
         proc = subprocess.run(
             argv, input=prompt, capture_output=True, text=True,
@@ -228,6 +232,8 @@ def main() -> int:
                         help="pr-review SKILL.md (default: the sibling pr-review skill)")
     parser.add_argument("--model", default=DEFAULT_MODEL,
                         help=f"opencode provider/model (default: {DEFAULT_MODEL!r})")
+    parser.add_argument("--variant", default=DEFAULT_VARIANT,
+                        help=f"reasoning effort (default: {DEFAULT_VARIANT!r})")
     parser.add_argument("--timeout", type=int, default=1800,
                         help="seconds to allow the agent (1800)")
     parser.add_argument("--print-prompt", action="store_true",
@@ -246,7 +252,7 @@ def main() -> int:
         print(prompt)
         return 0
 
-    reply = run_agent(prompt, args.model, workspace, workdir, args.timeout)
+    reply = run_agent(prompt, args.model, args.variant, workspace, workdir, args.timeout)
     findings, suspicions = normalise(extract_object(reply))
 
     findings_file = workdir / "findings.json"
@@ -260,6 +266,7 @@ def main() -> int:
         "pr": state.get("pr"),
         "head_sha": state.get("head_sha"),
         "model": args.model,
+        "variant": args.variant,
         "findings_file": str(findings_file),
         "suspicions_file": str(suspicions_file),
         "findings_count": len(findings),

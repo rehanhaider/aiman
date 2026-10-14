@@ -86,7 +86,7 @@ python3 <skill>/scripts/opencode_review.py --workdir <workdir>   # opencode
 
 `cursor_review.py` uses Cursor's automatic model selection (`--model auto`).
 `opencode_review.py` uses Muse Spark 1.3, free tier, on OpenCode Zen
-(`--model opencode/muse-spark-1.3-contributor-free`), and runs under a
+(`--model opencode/muse-spark-1.3-contributor-free`) at `--variant xhigh`, and runs under a
 permission config that denies edits and allows only read-only shell commands.
 Either takes `--model` to override. Both run read-only over the context
 gathered above, with this same method as its prompt.
