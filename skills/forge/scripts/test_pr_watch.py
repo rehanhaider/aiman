@@ -163,6 +163,43 @@ class TestResolveVerdict(unittest.TestCase):
         self.assertEqual(resolve_verdict(self.pr(), snap, [], HEAD, False), "clean")
 
 
+class TestBotReviews(unittest.TestCase):
+    """Reviews posted by the mizcode-reviewer skill come from its GitHub App."""
+
+    BOT = "mizcode-reviewer[bot]"
+
+    def test_signed_bot_all_clear_is_clean(self):
+        body = NOTE + CLEAN_BODY + HIDDEN
+        self.assertEqual(
+            verdict_for(snapshot([review(body, author=self.BOT)]), [], HEAD, None, None, DEFAULT_SIGNATURE),
+            "clean",
+        )
+
+    def test_unsigned_bot_all_clear_is_not_clean(self):
+        self.assertEqual(
+            verdict_for(snapshot([review(NOTE + CLEAN_BODY, author=self.BOT)]), [], HEAD, None, None, DEFAULT_SIGNATURE),
+            "unclear",
+        )
+
+    def test_bot_review_of_an_older_commit_is_stale(self):
+        body = NOTE + CLEAN_BODY + HIDDEN
+        self.assertEqual(
+            verdict_for(snapshot([review(body, sha="old", author=self.BOT)]), [], HEAD, None, None, DEFAULT_SIGNATURE),
+            "stale",
+        )
+
+    def test_bot_objection_is_not_outvoted_by_a_user_all_clear(self):
+        signed = NOTE + CLEAN_BODY + HIDDEN
+        objection = NOTE + f"Reviewed `{HEAD[:10]}` — 1 finding (1 P1)." + HIDDEN
+        self.assertEqual(
+            verdict_for(
+                snapshot([review(signed, author="rehanhaider"), review(objection, author=self.BOT)]),
+                [], HEAD, None, None, DEFAULT_SIGNATURE,
+            ),
+            "unclear",
+        )
+
+
 class TestRequiredSignature(unittest.TestCase):
     SIG = "pr-review skill"
     SIGNED = f"{CLEAN_BODY}\n\n— {SIG} · Claude Opus 5"

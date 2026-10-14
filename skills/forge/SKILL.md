@@ -62,14 +62,16 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
 
   | Mode | Reviewer |
   | --- | --- |
-  | `local` (default) | the `pr-review` skill, run by a subagent started with fresh context |
+  | `local` (default) | the `mizcode-reviewer` skill, run by a subagent started with fresh context |
   | `cursor` | `cursor-agent` running the same method, out of process |
   | `opencode` | `opencode` running the same method on Muse Spark 1.3 (free, OpenCode Zen), out of process |
   | `codex` | `@codex` on GitHub |
 
   One reviewer per run. Every posted review from `local`, `cursor`, or `opencode` opens
   with a note naming who read the diff, as harness/model — `Claude/Opus-5`,
-  `Cursor/Grok-4.7` — so the PR's history says which model said what.
+  `Cursor/Grok-4.7` — so the PR's history says which model said what. These
+  three post as the `mizcode-reviewer[bot]` GitHub App, with a narrow fallback
+  to `gh` as the user (phase 4, Posting).
 
 - `--pr` — resume the loop on an existing PR and skip implementation.
 - `--cycles` — hard cap on rectification rounds. Unset by default: the loop runs
@@ -84,7 +86,9 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
   without the flag. With `--hitl`, the merge is one more checkpoint: ask
   before merging. See phase 7.
 
-In the commands below, `<skill>` is the directory containing this file.
+In the commands below, `<skill>` is the directory containing this file, and
+`<mizcode-reviewer>` and `<pr-review>` are the sibling skill directories of
+those names.
 
 ## 1. Resolve the target and the source
 
@@ -194,7 +198,7 @@ Out of scope:
 - <behaviour in the touched files that this change does not alter>
 ```
 
-It is the one thing every reviewer reads: `pr-review` stages it for `local`,
+It is the one thing every reviewer reads: `gather` stages it for `local`,
 `cursor`, and `opencode`, and Codex reads the PR description. A comment that asks for
 work outside it is answered from it (phase 6), so write it as the contract
 you are prepared to hold the review to. It never excuses a defect the
@@ -204,43 +208,46 @@ newly exposed is in scope by definition.
 ## 4. Trigger a review
 
 **`local`** — start a subagent with fresh context and have it run the
-`pr-review` skill against this PR. Use the Agent tool with a general-purpose
-agent, never a fork: a fork inherits this conversation, and the reviewer must
-begin with no memory of writing the code. Do not read the diff in this context,
-and do not review it here if the subagent fails; start another subagent.
+`mizcode-reviewer` skill against this PR. Use the Agent tool with a
+general-purpose agent, never a fork: a fork inherits this conversation, and the
+reviewer must begin with no memory of writing the code. Do not read the diff in
+this context, and do not review it here if the subagent fails; start another
+subagent.
 
 Give the subagent:
 
 - the repository and PR number;
-- the path to the `pr-review` skill, to follow end to end including the post;
+- the path to the `mizcode-reviewer` skill, to follow end to end including the
+  post;
 - the instruction to sign as `Claude/<model>` with the model the subagent
   itself is running on, `Claude/Opus-5` for example, never a label handed
   down from here;
-- the instruction to return the review URL that `pr_review.py post` prints,
-  or the exit code and reason when the post did not land.
+- the instruction to return the workdir, the review URL that `post` prints, or
+  the exit code and the JSON error from stderr when the post did not land.
 
 Its last command is the post:
 
 ```bash
-python3 <pr-review>/scripts/pr_review.py post --workdir <workdir> \
+node <mizcode-reviewer>/scripts/review.js post --workdir <workdir> \
   --findings-file findings.json \
   --signed-by 'Claude/<the model the subagent is running on, e.g. Opus-5>'
 ```
 
 The subagent posts its outcome to GitHub, which is what the next phase reads.
-A return without a review URL is no review at all.
+A return without a review URL is no review at all, unless Posting below sends
+it to the fallback.
 
-**`cursor`** — invoke the `pr-review` skill with `--reviewer cursor`. It runs the
-same method through `cursor-agent`, out of process and read-only, then posts
-from here as usual. It uses automatic model selection (`--model auto`) unless
-`--model` says otherwise. The default `signed_by` label is `Cursor/Auto`,
-which names the selection mode rather than claiming a specific underlying
-model. An explicit model override changes the label. Driven directly:
+**`cursor`** — the same method through `cursor-agent`, out of process and
+read-only. `mizcode-reviewer` gathers and posts; `pr-review`'s runner does the
+reading. It uses automatic model selection (`--model auto`) unless `--model`
+says otherwise. The default `signed_by` label is `Cursor/Auto`, which names the
+selection mode rather than claiming a specific underlying model. An explicit
+model override changes the label. Driven directly:
 
 ```bash
-python3 <pr-review>/scripts/pr_review.py gather <number> --repo <owner/name>
+node <mizcode-reviewer>/scripts/review.js gather <number> --repo <owner/name>
 python3 <pr-review>/scripts/cursor_review.py --workdir <workdir>
-python3 <pr-review>/scripts/pr_review.py post --workdir <workdir> \
+node <mizcode-reviewer>/scripts/review.js post --workdir <workdir> \
   --findings-file <workdir>/findings.json \
   --suspicions-file <workdir>/suspicions.json \
   --signed-by '<the signed_by value cursor_review.py printed, e.g. Cursor/Auto>'
@@ -253,8 +260,8 @@ that as no review at all** — re-run it, or fall back to `local`. Never post an
 empty `findings.json` that came from a run which exited non-zero: that publishes
 the all-clear sentence over a review that never happened.
 
-**`opencode`** — the same as `cursor`, through `opencode_review.py` and
-`--reviewer opencode`. It runs Muse Spark 1.3, free tier, on OpenCode Zen
+**`opencode`** — the same as `cursor`, through `opencode_review.py`. It runs
+Muse Spark 1.3, free tier, on OpenCode Zen
 (`opencode/muse-spark-1.3-contributor-free`) at reasoning effort `xhigh`
 (`--variant xhigh`) unless `--model` or `--variant` says otherwise,
 under a permission config that denies edits and allows only read-only shell
@@ -269,7 +276,32 @@ read the diff; a review signed as a model that did not run is a false record.
 Keep the review URL that `post` prints on success — phase 5 uses it to prove
 this specific review landed.
 
-If `pr_review.py post` exits 3, whether the subagent reports it or `cursor`
+### Posting, and the `gh` fallback
+
+`mizcode-reviewer`'s `post` posts only as the `mizcode-reviewer[bot]` GitHub
+App, never as the user. forge owns the one fallback, and keeps it narrow so a
+review never lands under the user's name by accident:
+
+| `post` ends with | What forge does |
+| --- | --- |
+| exit 0 and a review URL | Use it. |
+| exit 4, `not_configured`: no `~/.config/mizcode-reviewer/config.json` or no `app_id` | Post the same findings with `gh` as the user, below, and say in one line why. |
+| exit 1 with `"error": "not_installed"`: the App isn't installed on this repository | The same fallback, and say why. |
+| exit 3, `head_moved` | No fallback. Review the new head, below. |
+| any other error, including a missing key file, `bad_input` or `github_error` | No fallback. Stop and report the error verbatim. |
+
+The fallback reuses the workdir `gather` made:
+
+```bash
+python3 <pr-review>/scripts/pr_review.py post --workdir <workdir> \
+  --findings-file <findings file> [--suspicions-file <suspicions file>] \
+  --signed-by '<the same label>'
+```
+
+It carries the same all-clear sentence and hidden marker, so phase 5 reads it
+the same way.
+
+If `post` exits 3, whether the subagent reports it or `cursor`
 or `opencode` hits it, the head moved while the review was being written. Do not retry the
 post — review the new head from the beginning. After two consecutive head
 moves, stop and tell the user something keeps pushing to the branch.
@@ -312,15 +344,15 @@ clean:
 
 ```bash
 python3 <skill>/scripts/pr_watch.py state <number> --repo <owner/name> \
-  --require-review '<review url from pr_review.py post>'
+  --require-review '<review url from post>'
 ```
 
 The signature is required by default, so nothing extra to pass here. An
 external reviewer that answers in text signs its own way, which is why the
 `codex` command above carries `--allow-unsigned`; never add that flag on the
 `local`, `cursor`, or `opencode` paths, as it removes the only thing separating
-an automated review from a typed comment. All three post through `pr_review.py`,
-so all three are already signed — the marker is a hidden HTML comment, so its absence from
+an automated review from a typed comment. All three post through `post`, or
+`pr_review.py post` on the fallback, so all three are already signed — the marker is a hidden HTML comment, so its absence from
 the rendered page means nothing.
 
 Both print one JSON object. The fields that drive the decision:
@@ -348,7 +380,7 @@ Unresolved conversations decide on their own. The newest review body is read
 2. Otherwise, take every review of the current head commit, newest per author.
    The PR author's empty reply-shell reviews — fabricated by GitHub when a
    thread is answered over the API — are not reviews and are ignored.
-3. All of them must carry the exact all-clear sentence `pr-review` posts —
+3. All of them must carry the exact all-clear sentence `post` writes —
    `Reviewed \`<sha>\` — no new issues found.` — for this same commit. A
    recognized external reviewer's attestation counts the same way: its
    no-findings comment naming this commit, or its 👍 on the trigger comment,

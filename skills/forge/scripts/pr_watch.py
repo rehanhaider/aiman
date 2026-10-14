@@ -280,7 +280,8 @@ def collect(repo: str, number: int, ignore: set[str]) -> dict:
 # The exact sentence pr_review.py posts when it finds nothing. Matched against
 # the first line only, anchored: prose such as "no major issues, but ..." is an
 # objection, not an all-clear, and substring matching cannot tell them apart.
-# Must match pr-review/scripts/pr_review.py SIGNATURE. Required by default so a
+# Must match the marker mizcode-reviewer's post and pr-review's pr_review.py
+# both add. Required by default so a
 # review typed by hand cannot pass as an automated one; external reviewers such
 # as codex sign differently and need --allow-unsigned.
 DEFAULT_SIGNATURE = "rehanhaider/pr-review-skill"
