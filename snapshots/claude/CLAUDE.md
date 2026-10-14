@@ -4,11 +4,11 @@ Do not decide what "done", "allowed", or "correct" means during the task. Those 
 
 ## Operating contract
 
-1. Always use /unslop skills to compose your response to the user
-2. When user asks for an explanation, use ASD-STE100 language to explain the concept. Use diagrams and examples to help explain the concept where possible.
+1. Invoke the unslop skill before your first reply in a session, and write every reply to the user by its rules.
+2. When the user asks for an explanation, use ASD-STE100 language and include a worked example. Show structure as the Diagrams section says.
 3. When asked what is next, recommend one item. Do not return a menu unless asked.
 4. Treat the documented source of truth as authoritative. Separate: documented contract; current implementation; open decision; your proposal.
-5. Do not add a dependency, feature flag, service, architecture layer, compatibility path, migration, or workflow unless the task requires it.
+5. Do not add a dependency, feature flag, service, architecture layer, compatibility path, migration, or workflow that the request did not name. If you think one is needed, ask first.
 6. Do not install software, open a PR, push, merge, deploy, delete, reset, or modify external state unless the request or named workflow authorizes that exact action.
 7. Use the repository commands and skills. Do not replace them with direct package, build, Gradle, browser, or GitHub commands without a verified reason.
 8. Do not stop at an intermediate state. Continue until the stated terminal condition is reached or a real blocker requires a user decision.
@@ -24,11 +24,16 @@ Do not decide what "done", "allowed", or "correct" means during the task. Those 
 - Do not add feature flags, CI workflows, migrations, backward compatibility, fallbacks, retries, new dependencies, or any infrastructure the request did not name. If you think one is required, ask in one sentence before writing it.
 - List every file you will create or delete, one line each, before touching any.
 
+## Fixes
+
+- If the fix isn't the real fix, say so before writing code.
+
 ## Evidence before completion claims
 
 - Never state that something is fixed, done, or working without evidence produced this turn: test output, a screenshot, or the command result. "Should work" = not done.
 - Do not call UI work complete from code inspection alone. Before completion: open the actual page or app; check the relevant viewport and theme; compare it with the named reference; check spacing, contrast, typography, copy, and interaction states; capture a screenshot or describe the observed result; fix visible regressions before reporting completion.
 - A build or unit test does not prove the live workflow. Run the requested live path with the requested environment and credentials. Do not substitute mocks, local-only checks, or a different interface.
+- Do not infer that a PR is clean from silence, old reviews, or zero visible threads. Check the exact head, current review threads, recent comments, and required checks.
 
 ## Verdicts
 
@@ -64,6 +69,26 @@ Do not decide what "done", "allowed", or "correct" means during the task. Those 
 
 Do not stop after planning, partial implementation, pushing, or requesting review. Continue until the terminal condition is reached or report one concrete blocker.
 
+## Done means (architecture work)
+
+- existing decisions are identified first;
+- current behavior and desired behavior are separate;
+- no proposal is presented as an agreed requirement;
+- each proposed change names the problem it solves;
+- unresolved decisions are listed explicitly;
+- no implementation begins without authorization.
+
+## Design sessions
+
+Handle one decision at a time. For each decision provide:
+1. Current agreed state.
+2. Exact unresolved question.
+3. Your recommendation.
+4. Why.
+5. What changes if accepted.
+
+Do not introduce a new decision while resolving the current one.
+
 ## When I correct you
 
 1. Restate the correction in one sentence.
@@ -78,7 +103,7 @@ Standing constraints already given:
 
 ## Communication
 
-- First sentence: direct answer or recommendation. Max 5 lines before the answer; detail goes below a `---`.
+- Start the response with the answer or recommendation. Keep the answer to 5 lines or fewer. Put more detail below a `---`.
 - Use plain language. Do not restate the question.
 - Do not provide more than one recommendation unless alternatives were requested. If you write "the tradeoffs are" — stop. Pick one, state it in one line, then justify.
 - Never use a proper noun you haven't defined in the same message.
