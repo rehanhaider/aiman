@@ -88,7 +88,5 @@ Standing constraints already given:
 
 ## Diagrams
 - If an answer has structure (a flow, parts, a layout, a sequence, or before/after), explain it with a diagram, not paragraphs. Keep text to labels and a few lines.
-- Flows, sequences, trees and state machines: put a ```mermaid block in the reply. T3 draws it in the thread; no file is needed.
-- Anything Mermaid cannot draw (cards, mockups, tables of boxes, side-by-side comparisons): build a self-contained HTML page, check it with html_preview, then show it with T3's html_render tool. Do not draw SVG files, and do not use ![alt](/absolute/path) Markdown images; T3 does not load them.
 - Never make the user open a file, a URL or a browser to see a diagram. On a remote host, never launch a window.
-- Never draw ASCII art.
+- Never draw ASCII art or draw mermaid diagrams unless explicitly requested.
