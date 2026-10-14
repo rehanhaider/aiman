@@ -56,6 +56,7 @@ See the [repo README](../README.md) for the difference, updates, and versioning.
 | Skill | What it does |
 | --- | --- |
 | `pr-review` | Review a PR/branch for real defects, prioritize by impact, post the outcome to GitHub |
+| `mizcode-reviewer` | Review a PR for real defects and post the outcome as the `mizcode-reviewer[bot]` GitHub App. Built from `Mizanic/mizcode-reviewer`; runs with Node.js 22, no install |
 | `forge` | Drive one issue (Linear, GitHub, or in-repo docs) to a PR and loop review→rectify until clean; stops before merge unless `--merge` is passed, which merges a clean PR. `--hitl` splits the work into an approved plan, waits for feedback after each tranche, and gates every review fix on an agreed resolution and a sign-off before commit |
 
 ### Meta & utilities

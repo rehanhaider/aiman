@@ -43,6 +43,13 @@
       "category": "frontend"
     },
     {
+      "name": "mizcode-reviewer",
+      "source": "./skills/mizcode-reviewer",
+      "description": "Review a GitHub pull request for concrete defects introduced by the change, prioritize findings by user and system impact, and post the review as the mizcode-reviewer[bot] GitHub App, including when no issues are found. Use when the user asks for a review posted by mizcode-reviewer or the bot, or invokes \"/mizcode-reviewer\".",
+      "version": "0.1.0",
+      "category": "productivity"
+    },
+    {
       "name": "pr-review",
       "source": "./skills/pr-review",
       "description": "Review a GitHub pull request, branch, or open changes for concrete defects introduced by the change; prioritize findings by user and system impact; and post a concise GitHub review outcome, including when no issues are found. Use when the user asks for a PR review, branch review, code review of open changes, prioritized findings, posted review comments, or invokes \"/pr-review\".",
