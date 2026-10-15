@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Unit tests for pr_review.py's pure logic — run with:  python3 scripts/test_pr_review.py"""
+"""Unit tests for gh_post.py's pure logic — run with:  python3 scripts/test_gh_post.py"""
 
 import unittest
 
-from pr_review import (
-    PR_URL_RE,
+from gh_post import (
     SIGNATURE,
     commentable_lines,
     drop_low_priority,
@@ -12,7 +11,6 @@ from pr_review import (
     render_comment_body,
     render_summary,
     split_findings,
-    url_matches,
     validate_comments,
     validate_findings,
 )
@@ -248,25 +246,6 @@ class TestRendering(unittest.TestCase):
         body = render_summary("abc1234567", folded, folded, None)
         self.assertIn("Additional low-priority findings:", body)
         self.assertIn("- **P3** `x.py:7` — Tidy the thing", body)
-
-
-class TestTargetParsing(unittest.TestCase):
-    def test_pr_url_variants(self):
-        for url in (
-            "https://github.com/owner/repo/pull/12",
-            "https://github.com/owner/repo/pull/12/files#r123",
-            "https://www.github.com/owner/repo/pull/12",
-        ):
-            m = PR_URL_RE.search(url)
-            self.assertIsNotNone(m, url)
-            self.assertEqual((m.group(1), m.group(2), m.group(3)), ("owner", "repo", "12"))
-        self.assertIsNone(PR_URL_RE.search("https://github.com/owner/repo/issues/12"))
-
-    def test_remote_url_matching(self):
-        self.assertTrue(url_matches("git@github.com:Owner/Repo.git", "owner/repo"))
-        self.assertTrue(url_matches("https://github.com/owner/repo", "owner/repo"))
-        self.assertFalse(url_matches("git@github.com:owner/other.git", "owner/repo"))
-        self.assertFalse(url_matches("https://github.com/prefix-owner/repo", "owner/repo"))
 
 
 if __name__ == "__main__":

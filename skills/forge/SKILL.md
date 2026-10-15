@@ -87,8 +87,7 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
   before merging. See phase 7.
 
 In the commands below, `<skill>` is the directory containing this file, and
-`<mizcode-reviewer>` and `<pr-review>` are the sibling skill directories of
-those names.
+`<mizcode-reviewer>` is the sibling skill directory of that name.
 
 ## 1. Resolve the target and the source
 
@@ -238,15 +237,16 @@ A return without a review URL is no review at all, unless Posting below sends
 it to the fallback.
 
 **`cursor`** — the same method through `cursor-agent`, out of process and
-read-only. `mizcode-reviewer` gathers and posts; `pr-review`'s runner does the
-reading. It uses automatic model selection (`--model auto`) unless `--model`
-says otherwise. The default `signed_by` label is `Cursor/Auto`, which names the
+read-only. `mizcode-reviewer` gathers and posts; forge's runner does the
+reading, following `mizcode-reviewer`'s `SKILL.md` as the method. It uses
+automatic model selection (`--model auto`) unless `--model` says otherwise.
+The default `signed_by` label is `Cursor/Auto`, which names the
 selection mode rather than claiming a specific underlying model. An explicit
 model override changes the label. Driven directly:
 
 ```bash
 node <mizcode-reviewer>/scripts/review.js gather <number> --repo <owner/name>
-python3 <pr-review>/scripts/cursor_review.py --workdir <workdir>
+python3 <skill>/scripts/cursor_review.py --workdir <workdir>
 node <mizcode-reviewer>/scripts/review.js post --workdir <workdir> \
   --findings-file <workdir>/findings.json \
   --suspicions-file <workdir>/suspicions.json \
@@ -293,7 +293,7 @@ review never lands under the user's name by accident:
 The fallback reuses the workdir `gather` made:
 
 ```bash
-python3 <pr-review>/scripts/pr_review.py post --workdir <workdir> \
+python3 <skill>/scripts/gh_post.py --workdir <workdir> \
   --findings-file <findings file> [--suspicions-file <suspicions file>] \
   --signed-by '<the same label>'
 ```
@@ -352,7 +352,7 @@ external reviewer that answers in text signs its own way, which is why the
 `codex` command above carries `--allow-unsigned`; never add that flag on the
 `local`, `cursor`, or `opencode` paths, as it removes the only thing separating
 an automated review from a typed comment. All three post through `post`, or
-`pr_review.py post` on the fallback, so all three are already signed — the marker is a hidden HTML comment, so its absence from
+`gh_post.py` on the fallback, so all three are already signed — the marker is a hidden HTML comment, so its absence from
 the rendered page means nothing.
 
 Both print one JSON object. The fields that drive the decision:

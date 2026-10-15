@@ -1,19 +1,16 @@
 #!/usr/bin/env python3
-"""Plumbing for the pr-review skill.
+"""forge's `gh` fallback for posting a review as the user.
 
-Subcommands:
-  gather   Resolve the review target (PR URL, PR number, branch name, or the
-           current branch), then stage everything the review needs in a temp
-           workdir: state.json, diff.patch, threads.json (existing review
-           threads with resolution state, via GraphQL), pr_body.md, and — when
-           a local clone with a matching remote exists — a detached read-only
-           worktree of the PR head at head/.
-  post     Render findings.json into Codex-style inline comments plus a
-           summary body, then post the review. The reviews endpoint is atomic:
-           one comment anchored to a line outside the PR diff fails the whole
-           POST with a 422, so every anchor is validated against the live diff
-           first and misses are reported with the nearest commentable line.
-  cleanup  Remove the worktree gather created.
+forge posts reviews through mizcode-reviewer's `review.js post`, as the
+`mizcode-reviewer[bot]` GitHub App. When the App is not configured or not
+installed on the repository, forge posts the same findings with this script
+instead, over the workdir `review.js gather` made.
+
+It renders findings.json into Codex-style inline comments plus a summary body,
+then posts the review. The reviews endpoint is atomic: one comment anchored to
+a line outside the PR diff fails the whole POST with a 422, so every anchor is
+validated against the live diff first and misses are reported with the nearest
+commentable line.
 
 Requires only the Python stdlib and an authenticated `gh` CLI.
 """
@@ -25,37 +22,13 @@ import json
 import re
 import subprocess
 import sys
-import tempfile
 from collections import Counter
 from pathlib import Path
 
 HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
-PR_URL_RE = re.compile(r"github\.[\w.-]+/([^/\s]+)/([^/\s]+)/pull/(\d+)")
 
 SEVERITIES = ("P0", "P1", "P2", "P3")
 BADGE_COLORS = {"P0": "red", "P1": "orange", "P2": "yellow", "P3": "lightgrey"}
-
-THREADS_QUERY = """\
-query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
-  repository(owner: $owner, name: $name) {
-    pullRequest(number: $number) {
-      reviewThreads(first: 100, after: $cursor) {
-        pageInfo { hasNextPage endCursor }
-        nodes {
-          isResolved
-          isOutdated
-          path
-          line
-          comments(first: 1) {
-            totalCount
-            nodes { author { login } body }
-          }
-        }
-      }
-    }
-  }
-}
-"""
 
 
 def run(cmd: list[str], *, input_text: str | None = None) -> subprocess.CompletedProcess[str]:
@@ -69,203 +42,6 @@ def run_gh(args: list[str], *, input_text: str | None = None) -> subprocess.Comp
 def die(msg: str, code: int = 1) -> None:
     print(msg, file=sys.stderr)
     raise SystemExit(code)
-
-
-# ---------------------------------------------------------------- target resolution
-
-
-def default_repo() -> str | None:
-    p = run_gh(["repo", "view", "--json", "nameWithOwner"])
-    if p.returncode != 0:
-        return None
-    try:
-        return json.loads(p.stdout)["nameWithOwner"]
-    except (json.JSONDecodeError, KeyError):
-        return None
-
-
-def resolve_target(target: str, repo_flag: str | None) -> tuple[str, int]:
-    """Turn a PR URL / number / branch / nothing into (owner/name, pr_number)."""
-    target = (target or "").strip()
-
-    m = PR_URL_RE.search(target)
-    if m:
-        return f"{m.group(1)}/{m.group(2)}", int(m.group(3))
-
-    if re.fullmatch(r"#?\d+", target):
-        repo = repo_flag or default_repo()
-        if not repo:
-            die("got a PR number but no repo — pass --repo owner/name or run inside a clone")
-        return repo, int(target.lstrip("#"))
-
-    branch = target
-    if not branch:
-        p = run(["git", "branch", "--show-current"])
-        branch = (p.stdout or "").strip()
-        if not branch:
-            die("no target given and no current branch — pass a PR URL, number, or branch")
-
-    repo = repo_flag or default_repo()
-    listing = ["pr", "list", "--head", branch, "--state", "open", "--json", "number", "--limit", "1"]
-    if repo:
-        listing += ["--repo", repo]
-    p = run_gh(listing)
-    if p.returncode != 0:
-        die(f"could not list PRs for branch '{branch}':\n{p.stderr.strip()}")
-    rows = json.loads(p.stdout or "[]")
-    if not rows:
-        die(f"no open PR found for branch '{branch}'", code=2)
-    if not repo:
-        repo = default_repo()
-        if not repo:
-            die("resolved a PR but not the repo — pass --repo owner/name")
-    return repo, rows[0]["number"]
-
-
-# ---------------------------------------------------------------- gather
-
-
-def fetch_threads(repo: str, number: int) -> tuple[list[dict], str | None]:
-    """Existing review threads with resolution state (GraphQL-only information)."""
-    owner, name = repo.split("/", 1)
-    threads: list[dict] = []
-    cursor: str | None = None
-    while True:
-        gh_args = [
-            "api", "graphql",
-            "-F", f"owner={owner}", "-F", f"name={name}", "-F", f"number={number}",
-            "-f", f"query={THREADS_QUERY}",
-        ]
-        if cursor:
-            gh_args += ["-F", f"cursor={cursor}"]
-        p = run_gh(gh_args)
-        if p.returncode != 0:
-            return threads, f"could not fetch review threads: {(p.stderr or '').strip()[:200]}"
-        try:
-            page = json.loads(p.stdout)["data"]["repository"]["pullRequest"]["reviewThreads"]
-        except (json.JSONDecodeError, KeyError, TypeError):
-            return threads, "unexpected reviewThreads response; existing-thread dedup may be incomplete"
-        for node in page["nodes"]:
-            first = (node["comments"]["nodes"] or [{}])[0]
-            threads.append({
-                "path": node["path"],
-                "line": node["line"],
-                "is_resolved": node["isResolved"],
-                "is_outdated": node["isOutdated"],
-                "author": (first.get("author") or {}).get("login"),
-                "excerpt": (first.get("body") or "")[:300],
-                "comment_count": node["comments"]["totalCount"],
-            })
-        if not page["pageInfo"]["hasNextPage"]:
-            return threads, None
-        cursor = page["pageInfo"]["endCursor"]
-
-
-def url_matches(url: str, repo: str) -> bool:
-    """True if a git remote URL points at owner/name (ssh or https, ±.git)."""
-    url = url.lower()
-    if url.endswith(".git"):
-        url = url[:-4]
-    return url.replace(":", "/").endswith("/" + repo.lower())
-
-
-def matching_remote(repo: str) -> str | None:
-    p = run(["git", "remote", "-v"])
-    if p.returncode != 0:
-        return None
-    for line in p.stdout.splitlines():
-        parts = line.split()
-        if len(parts) >= 2 and url_matches(parts[1], repo):
-            return parts[0]
-    return None
-
-
-def make_worktree(repo: str, number: int, head_sha: str, workdir: Path) -> tuple[str | None, str | None, str | None]:
-    """Detached worktree of the PR head; never touches the user's checkout.
-
-    Returns (worktree_path, repo_root, note)."""
-    p = run(["git", "rev-parse", "--show-toplevel"])
-    if p.returncode != 0:
-        return None, None, "not inside a git repo; read files via gh api at the head SHA"
-    root = p.stdout.strip()
-    remote = matching_remote(repo)
-    if not remote:
-        return None, root, f"no git remote here matches {repo}; read files via gh api at the head SHA"
-    f = run(["git", "fetch", "--quiet", remote, f"pull/{number}/head"])
-    if f.returncode != 0:
-        return None, root, f"git fetch {remote} pull/{number}/head failed: {(f.stderr or '').strip()[:200]}"
-    path = str(workdir / "head")
-    w = run(["git", "worktree", "add", "--detach", path, head_sha])
-    if w.returncode == 0:
-        return path, root, None
-    w2 = run(["git", "worktree", "add", "--detach", path, "FETCH_HEAD"])
-    if w2.returncode == 0:
-        return path, root, f"worktree is at FETCH_HEAD, which may differ from recorded head {head_sha[:10]}"
-    return None, root, f"could not create worktree: {(w.stderr or '').strip()[:200]}"
-
-
-def cmd_gather(args: argparse.Namespace) -> int:
-    repo, number = resolve_target(args.target, args.repo)
-    meta_p = run_gh(["pr", "view", str(number), "--repo", repo, "--json",
-                     "number,title,body,baseRefName,headRefOid,url,changedFiles,additions,deletions,files"])
-    if meta_p.returncode != 0:
-        die(f"could not read PR {repo}#{number}:\n{meta_p.stderr.strip()}")
-    meta = json.loads(meta_p.stdout)
-    head_sha = meta["headRefOid"]
-    workdir = Path(tempfile.mkdtemp(prefix=f"pr-review-{number}-"))
-    notes: list[str] = []
-
-    diff_p = run_gh(["pr", "diff", str(number), "--repo", repo])
-    diff_file: Path | None = None
-    if diff_p.returncode == 0:
-        diff_file = workdir / "diff.patch"
-        diff_file.write_text(diff_p.stdout, encoding="utf-8")
-    else:
-        notes.append(f"could not fetch the diff ({(diff_p.stderr or '').strip()[:200]}); read files individually")
-
-    (workdir / "pr_body.md").write_text(meta.get("body") or "", encoding="utf-8")
-
-    threads, threads_note = fetch_threads(repo, number)
-    (workdir / "threads.json").write_text(json.dumps(threads, indent=2), encoding="utf-8")
-    if threads_note:
-        notes.append(threads_note)
-
-    worktree = repo_root = None
-    if args.no_worktree:
-        notes.append("worktree skipped (--no-worktree)")
-    else:
-        worktree, repo_root, wt_note = make_worktree(repo, number, head_sha, workdir)
-        if wt_note:
-            notes.append(wt_note)
-
-    state = {
-        "repo": repo, "pr": number, "head_sha": head_sha, "base": meta["baseRefName"],
-        "url": meta["url"], "workdir": str(workdir), "worktree": worktree, "repo_root": repo_root,
-    }
-    (workdir / "state.json").write_text(json.dumps(state, indent=2), encoding="utf-8")
-
-    print(json.dumps({
-        "repo": repo,
-        "pr": number,
-        "title": meta["title"],
-        "url": meta["url"],
-        "base": meta["baseRefName"],
-        "head_sha": head_sha,
-        "changed_files": meta.get("changedFiles"),
-        "additions": meta.get("additions"),
-        "deletions": meta.get("deletions"),
-        "files": [{"path": f["path"], "additions": f["additions"], "deletions": f["deletions"]}
-                  for f in meta.get("files") or []],
-        "threads_open": sum(1 for t in threads if not t["is_resolved"]),
-        "threads_resolved": sum(1 for t in threads if t["is_resolved"]),
-        "workdir": str(workdir),
-        "diff": str(diff_file) if diff_file else None,
-        "threads": str(workdir / "threads.json"),
-        "pr_body": str(workdir / "pr_body.md"),
-        "worktree": worktree,
-        "notes": notes,
-    }, indent=2))
-    return 0
 
 
 # ---------------------------------------------------------------- findings → review
@@ -350,10 +126,11 @@ def finding_to_comment(finding: dict) -> dict:
     return comment
 
 
-# Stable identifier proving a review was posted by this skill rather than typed
-# by hand. Rendered as an HTML comment: invisible on GitHub, returned verbatim
-# by the API. forge/scripts/pr_watch.py requires this exact string by default;
-# changing it here without changing it there breaks the clean verdict.
+# Stable identifier proving a review was posted by tooling rather than typed by
+# hand. Rendered as an HTML comment: invisible on GitHub, returned verbatim by
+# the API. pr_watch.py requires this exact string by default, and
+# mizcode-reviewer's `review.js post` writes the same one; changing it here
+# without changing it there breaks the clean verdict.
 SIGNATURE = "rehanhaider/pr-review-skill"
 
 
@@ -511,7 +288,7 @@ def cmd_post(args: argparse.Namespace) -> int:
         pr = pr or state.get("pr")
         commit = commit or state.get("head_sha")
     if not (repo and pr and commit):
-        die("post needs --workdir (from gather) or all of --repo, --pr, --commit")
+        die("needs --workdir (from review.js gather) or all of --repo, --pr, --commit")
 
     findings = json.loads(args.findings_file.read_text(encoding="utf-8"))
     errors = validate_findings(findings)
@@ -608,49 +385,14 @@ def cmd_post(args: argparse.Namespace) -> int:
     return 0
 
 
-# ---------------------------------------------------------------- cleanup
-
-
-def cmd_cleanup(args: argparse.Namespace) -> int:
-    state_file = Path(args.workdir) / "state.json"
-    if not state_file.is_file():
-        die(f"no state.json in {args.workdir} — was this workdir created by gather?")
-    state = json.loads(state_file.read_text(encoding="utf-8"))
-    worktree, root = state.get("worktree"), state.get("repo_root")
-    if not worktree:
-        print("no worktree to remove")
-        return 0
-    git = ["git", "-C", root] if root else ["git"]
-    p = run([*git, "worktree", "remove", worktree])
-    if p.returncode != 0:
-        if not Path(worktree).exists():
-            run([*git, "worktree", "prune"])
-            print("worktree already gone; pruned stale entries")
-            return 0
-        print(f"git worktree remove failed: {(p.stderr or '').strip()}", file=sys.stderr)
-        return 1
-    print(f"removed worktree {worktree}")
-    return 0
-
-
 # ---------------------------------------------------------------- entry point
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
+    p = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    sub = parser.add_subparsers(dest="command", required=True)
-
-    g = sub.add_parser("gather", help="resolve the PR and stage review context in a temp workdir")
-    g.add_argument("target", nargs="?", default="",
-                   help="PR URL, PR number, or branch name (default: current branch)")
-    g.add_argument("--repo", help="owner/name (default: repo of the current directory)")
-    g.add_argument("--no-worktree", action="store_true", help="skip creating the read-only worktree")
-    g.set_defaults(func=cmd_gather)
-
-    p = sub.add_parser("post", help="render findings.json and post the review")
-    p.add_argument("--workdir", help="workdir from gather (supplies --repo/--pr/--commit)")
+    p.add_argument("--workdir", help="workdir from `review.js gather` (supplies --repo/--pr/--commit)")
     p.add_argument("--repo", help="owner/name (overrides workdir state)")
     p.add_argument("--pr", type=int, help="PR number (overrides workdir state)")
     p.add_argument("--commit", help="reviewed commit SHA (overrides workdir state)")
@@ -673,14 +415,9 @@ def main() -> int:
                         "'Cursor/Grok-4.7'; rendered as a note at the top of the review. "
                         f"The machine signature {SIGNATURE!r} is always added as a "
                         "hidden HTML comment, whatever this says")
-    p.set_defaults(func=cmd_post)
 
-    c = sub.add_parser("cleanup", help="remove the worktree gather created")
-    c.add_argument("--workdir", required=True)
-    c.set_defaults(func=cmd_cleanup)
-
-    args = parser.parse_args()
-    return args.func(args)
+    args = p.parse_args()
+    return cmd_post(args)
 
 
 if __name__ == "__main__":

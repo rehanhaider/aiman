@@ -45,7 +45,6 @@ const DEFAULT_CATEGORY: Record<string, string> = {
   "grill-me": "productivity",
   hallmark: "frontend",
   "mizcode-reviewer": "productivity",
-  "pr-review": "productivity",
   "react-expert": "frontend",
   "react-native": "frontend",
   "seo-expert": "writing",

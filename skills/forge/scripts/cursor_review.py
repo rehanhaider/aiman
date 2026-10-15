@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Run a pull-request review through the `cursor-agent` CLI.
 
-Drives cursor-agent over the context `pr_review.py gather` staged, then writes
-`findings.json` and `suspicions.json` in the schema `pr_review.py post` expects.
-This script never posts: the caller posts, so the review carries the same
-signature and URL-verification path as an in-context review. The printed
-`signed_by` is the harness/model label to pass to `pr_review.py post`.
+Drives cursor-agent over the context mizcode-reviewer's `review.js gather`
+staged, then writes `findings.json` and `suspicions.json` in the schema
+`review.js post` expects. The review method is the sibling mizcode-reviewer
+skill's SKILL.md. This script never posts: the caller posts, so the review
+carries the same signature and URL-verification path as an in-context review.
+The printed `signed_by` is the harness/model label to pass to `review.js post`.
 
 The agent runs read-only (`--mode ask`), so it can read the repository and run
 `git`/`rg` but cannot edit, commit, or touch GitHub.
@@ -31,10 +32,10 @@ from pathlib import Path
 # Let Cursor select the model. An explicit --model overrides this default.
 DEFAULT_MODEL = "auto"
 
-# The label `pr_review.py post --signed-by` renders at the top of the review,
-# as harness/model, so a reader can tell which model read the diff. The machine
-# signature pr_watch.py keys on is added by pr_review.py itself, so nothing
-# here needs to carry it.
+# The label `review.js post --signed-by` renders at the top of the review, as
+# harness/model, so a reader can tell which model read the diff. The machine
+# signature pr_watch.py keys on is added by `post` itself, so nothing here
+# needs to carry it.
 HARNESS = "Cursor"
 
 # Cursor's model ids end in how to run the model, not what it is.
@@ -134,8 +135,7 @@ object:
 """
 
 
-def build_prompt(state: dict, workdir: Path, method: str, worktree: str | None,
-                 reviewer: str = "cursor") -> str:
+def build_prompt(state: dict, workdir: Path, method: str, worktree: str | None) -> str:
     repo, pr, head = state.get("repo"), state.get("pr"), state.get("head_sha", "")
     if worktree:
         source = f"    head/        — read-only worktree of the reviewed commit at {worktree}"
@@ -147,8 +147,9 @@ def build_prompt(state: dict, workdir: Path, method: str, worktree: str | None,
         )
     return f"""You are reviewing GitHub pull request {repo}#{pr} at commit {head}.
 
-Follow the review method reproduced below. It is the full text of the pr-review
-skill, and it is the method for this review — not a summary to skim.
+Follow the review method reproduced below. It is the full text of the
+mizcode-reviewer skill, and it is the method for this review — not a summary to
+skim.
 
 <review-method>
 {method}
@@ -156,10 +157,8 @@ skill, and it is the method for this review — not a summary to skim.
 
 ## How this run differs from that method
 
-- **You are the reviewer.** The method's `--reviewer` argument has already been
-  resolved — you are what `{reviewer}` resolves to. Ignore that section, and do not
-  delegate the reading to another agent.
-- Steps 1 and 8 are already done for you. Do not run `pr_review.py`. Do not post
+- **You are the reviewer.** Do not delegate the reading to another agent.
+- Steps 1 and 8 are already done for you. Do not run `review.js`. Do not post
   anything to GitHub, and do not use `gh` for any write operation.
 - The review context is staged at {workdir}:
     diff.patch   — the full PR diff against its base. This is the review scope.
@@ -169,8 +168,8 @@ skill, and it is the method for this review — not a summary to skim.
 - Everything you do is read-only. Do not edit files, commit, push, reply to
   threads, or resolve threads. Reading the repository and running `git log`,
   `git blame`, and `rg` is expected and encouraged.
-- Step 9's chat report does not apply. The output contract below is the whole
-  deliverable.
+- Step 9 does not apply: do not clean up, and do not write a chat report. The
+  output contract below is the whole deliverable.
 {OUTPUT_CONTRACT}"""
 
 
@@ -282,7 +281,7 @@ def coerce_line(value: object) -> int | None:
 
 
 def normalise(obj: dict) -> tuple[list[dict], list[dict]]:
-    """Coerce the agent's object into the schema `pr_review.py post` validates.
+    """Coerce the agent's object into the schema `review.js post` validates.
 
     Only case and shape are repaired here. Anything missing stays missing so
     that `post` reports it, rather than being papered over into a valid-looking
@@ -312,7 +311,7 @@ def normalise(obj: dict) -> tuple[list[dict], list[dict]]:
             if side not in SIDES:
                 problems.append(f"finding {i}: side {f['side']!r} is not RIGHT or LEFT")
             else:
-                # pr_review.py looks anchors up by exact case; a lowercase
+                # `post` looks anchors up by exact case; a lowercase
                 # "right" matches no hunk and fails the whole atomic POST.
                 f["side"] = side
         if "line" in f:
@@ -346,7 +345,7 @@ def normalise(obj: dict) -> tuple[list[dict], list[dict]]:
 def load_state(workdir: Path) -> dict:
     state_file = workdir / "state.json"
     if not state_file.is_file():
-        die(f"no state.json in {workdir} — run `pr_review.py gather` first")
+        die(f"no state.json in {workdir} — run `review.js gather` first")
     try:
         return json.loads(state_file.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
@@ -355,8 +354,10 @@ def load_state(workdir: Path) -> dict:
 
 
 def resolve_method_file(explicit: str | None) -> Path:
-    """The review method to hand the agent: this skill's own SKILL.md."""
-    path = Path(explicit) if explicit else Path(__file__).resolve().parent.parent / "SKILL.md"
+    """The review method to hand the agent: the sibling mizcode-reviewer skill's
+    SKILL.md, the same method a local review follows."""
+    skills = Path(__file__).resolve().parent.parent.parent
+    path = Path(explicit) if explicit else skills / "mizcode-reviewer" / "SKILL.md"
     if not path.is_file():
         die(f"could not read the review method at {path}; pass --method-file")
     return path
@@ -366,9 +367,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--workdir", required=True,
-                        help="workdir created by `pr_review.py gather`")
+                        help="workdir created by `review.js gather`")
     parser.add_argument("--method-file",
-                        help="pr-review SKILL.md (default: the sibling pr-review skill)")
+                        help="review method (default: the sibling mizcode-reviewer skill's SKILL.md)")
     parser.add_argument("--model", default=DEFAULT_MODEL,
                         help=f"cursor model string (default: {DEFAULT_MODEL!r})")
     parser.add_argument("--timeout", type=int, default=1800,
