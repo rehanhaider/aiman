@@ -141,7 +141,7 @@ def viewer_login() -> str:
 
 
 def parse_review_id(value: str | None) -> int | None:
-    """Accept a bare review id or the html_url `pr_review.py post` prints."""
+    """Accept a bare review id or the html_url `post` prints."""
     if not value:
         return None
     match = re.search(r"pullrequestreview-(\d+)", value)
@@ -277,11 +277,11 @@ def collect(repo: str, number: int, ignore: set[str]) -> dict:
     }
 
 
-# The exact sentence pr_review.py posts when it finds nothing. Matched against
+# The exact sentence `post` writes when it finds nothing. Matched against
 # the first line only, anchored: prose such as "no major issues, but ..." is an
 # objection, not an all-clear, and substring matching cannot tell them apart.
-# Must match the marker mizcode-reviewer's post and pr-review's pr_review.py
-# both add. Required by default so a
+# Must match the marker mizcode-reviewer's `review.js post` and forge's
+# gh_post.py both add. Required by default so a
 # review typed by hand cannot pass as an automated one; external reviewers such
 # as codex sign differently and need --allow-unsigned.
 DEFAULT_SIGNATURE = "rehanhaider/pr-review-skill"
@@ -292,7 +292,7 @@ CLEAN_MARKER_RE = re.compile(
 )
 
 
-# `> [!NOTE]` and friends: GitHub's alert syntax. pr_review.py opens the body
+# `> [!NOTE]` and friends: GitHub's alert syntax. `post` opens the body
 # with one naming the reviewer, so the verdict line sits right after it.
 ALERT_OPEN_RE = re.compile(r"^>\s*\[!\w+\]\s*$", re.IGNORECASE)
 
@@ -334,7 +334,7 @@ def is_author_reply_shell(review: dict, pr_author: str | None) -> bool:
     )
 
 
-# External reviewers do not post pr-review's marker sentence, and several do
+# External reviewers do not post the all-clear marker sentence, and several do
 # not post a review object at all. Codex answers a no-findings round with an
 # issue comment ("Codex Review: Didn't find any major issues. ... Reviewed
 # commit `<sha>`") or with only a +1 reaction on the trigger comment; only its
@@ -1069,7 +1069,7 @@ def main() -> int:
             "--require-review",
             metavar="ID_OR_URL",
             help="refuse a clean verdict unless this review is present at the "
-            "head; accepts the html_url that `pr_review.py post` prints",
+            "head; accepts the html_url that `post` prints",
         )
         p.add_argument(
             "--trigger-comment",

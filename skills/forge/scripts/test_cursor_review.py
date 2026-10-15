@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import json
 import unittest
+from pathlib import Path
 
 from cursor_review import (
     DEFAULT_MODEL,
     agent_result,
+    build_prompt,
     coerce_line,
     extract_object,
     normalise,
     pretty_model,
+    resolve_method_file,
     reviewer_label,
 )
 
@@ -93,7 +96,7 @@ class TestNormalise(unittest.TestCase):
         self.assertEqual(caught.exception.code, 3)
 
     def test_lowercase_side_is_uppercased(self):
-        # pr_review.py matches anchors by exact case; "right" matches no hunk
+        # `post` matches anchors by exact case; "right" matches no hunk
         # and fails the whole atomic POST.
         findings, _ = normalise({"findings": [self.finding(side="right")]})
         self.assertEqual(findings[0]["side"], "RIGHT")
@@ -153,6 +156,20 @@ class TestCoerceLine(unittest.TestCase):
     def test_rejects_the_rest(self):
         for value in (None, 1.5, "top", "", [], {}):
             self.assertIsNone(coerce_line(value))
+
+
+class TestMethod(unittest.TestCase):
+    def test_default_method_is_the_sibling_mizcode_reviewer_skill(self):
+        path = resolve_method_file(None)
+        self.assertEqual(path.parent.name, "mizcode-reviewer")
+        self.assertTrue(path.read_text(encoding="utf-8").startswith("---\nname: mizcode-reviewer\n"))
+
+    def test_prompt_names_mizcode_reviewer_plumbing(self):
+        state = {"repo": "o/r", "pr": 1, "head_sha": "abc"}
+        prompt = build_prompt(state, Path("/tmp/w"), "METHOD", None)
+        self.assertIn("mizcode-reviewer skill", prompt)
+        self.assertIn("Do not run `review.js`", prompt)
+        self.assertNotIn("pr_review", prompt)
 
 
 class TestReviewerLabel(unittest.TestCase):

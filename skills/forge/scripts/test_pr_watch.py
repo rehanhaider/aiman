@@ -19,7 +19,7 @@ from pr_watch import (
 
 HEAD = "9272601754ee1b5c6209649b4753b76680d91d83"
 CLEAN_BODY = f"Reviewed `{HEAD[:10]}` — no new issues found."
-# What pr_review.py post renders around the verdict line.
+# What `post` renders around the verdict line.
 NOTE = "> [!NOTE]\n> 🤖 Reviewed by Claude/Opus-5\n\n"
 HIDDEN = f"\n\n<!-- {DEFAULT_SIGNATURE} -->"
 

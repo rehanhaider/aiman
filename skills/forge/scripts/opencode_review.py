@@ -2,9 +2,10 @@
 """Run a pull-request review through the `opencode` CLI.
 
 The OpenCode counterpart of `cursor_review.py`: it hands the context
-`pr_review.py gather` staged to `opencode run`, then writes `findings.json` and
-`suspicions.json` in the schema `pr_review.py post` expects. It never posts. The
-printed `signed_by` is the harness/model label to pass to `pr_review.py post`.
+mizcode-reviewer's `review.js gather` staged to `opencode run`, then writes
+`findings.json` and `suspicions.json` in the schema `review.js post` expects. It
+never posts. The printed `signed_by` is the harness/model label to pass to
+`review.js post`.
 
 OpenCode has no read-only switch that still allows a shell, so this script
 supplies its own permission config: no edits, no web, no paths outside the
@@ -227,9 +228,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--workdir", required=True,
-                        help="workdir created by `pr_review.py gather`")
+                        help="workdir created by `review.js gather`")
     parser.add_argument("--method-file",
-                        help="pr-review SKILL.md (default: the sibling pr-review skill)")
+                        help="review method (default: the sibling mizcode-reviewer skill's SKILL.md)")
     parser.add_argument("--model", default=DEFAULT_MODEL,
                         help=f"opencode provider/model (default: {DEFAULT_MODEL!r})")
     parser.add_argument("--variant", default=DEFAULT_VARIANT,
@@ -246,7 +247,7 @@ def main() -> int:
 
     worktree = state.get("worktree")
     workspace = worktree or state.get("repo_root") or str(Path.cwd())
-    prompt = build_prompt(state, workdir, method, worktree, reviewer="opencode") + SHELL_NOTE
+    prompt = build_prompt(state, workdir, method, worktree) + SHELL_NOTE
 
     if args.print_prompt:
         print(prompt)
