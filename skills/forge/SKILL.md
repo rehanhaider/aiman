@@ -64,7 +64,7 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
   | --- | --- |
   | `local` (default) | the `mizcode-reviewer` skill, run by a subagent started with fresh context |
   | `cursor` | `cursor-agent` running the same method, out of process |
-  | `opencode` | `opencode` running the same method on Muse Spark 1.3 (free, OpenCode Zen), out of process |
+  | `opencode` | `opencode` running the same method on DeepSeek V4.1 Flash (free, OpenCode Zen), out of process |
   | `codex` | `@codex` on GitHub |
 
   One reviewer per run. Every posted review from `local`, `cursor`, or `opencode` opens
@@ -261,12 +261,12 @@ empty `findings.json` that came from a run which exited non-zero: that publishes
 the all-clear sentence over a review that never happened.
 
 **`opencode`** — the same as `cursor`, through `opencode_review.py`. It runs
-Muse Spark 1.3, free tier, on OpenCode Zen
-(`opencode/muse-spark-1.3-contributor-free`) at reasoning effort `xhigh`
-(`--variant xhigh`) unless `--model` or `--variant` says otherwise,
+DeepSeek V4.1 Flash, free tier, on OpenCode Zen
+(`opencode/deepseek-v4.1-flash-free`) at reasoning effort `max`
+(`--variant max`) unless `--model` or `--variant` says otherwise,
 under a permission config that denies edits and allows only read-only shell
 commands. The default `signed_by` label is
-`OpenCode/Muse-Spark-1.3-Contributor`. Exit 3 means the same as for `cursor`.
+`OpenCode/Deepseek-V4.1-Flash`. Exit 3 means the same as for `cursor`.
 
 **`--signed-by` is the visible label, not the machine signature.** `post`
 renders it as a note at the top of the review (`🤖 Reviewed by Claude/Opus-5`)

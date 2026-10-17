@@ -36,11 +36,11 @@ from cursor_review import (
     resolve_method_file,
 )
 
-# Muse Spark 1.3 on OpenCode Zen, free tier. An explicit --model overrides it.
-DEFAULT_MODEL = "opencode/muse-spark-1.3-contributor-free"
-# Reasoning effort, passed as `opencode run --variant`. An explicit --variant
-# overrides it.
-DEFAULT_VARIANT = "xhigh"
+# DeepSeek V4.1 Flash on OpenCode Zen, free tier. An explicit --model overrides it.
+DEFAULT_MODEL = "opencode/deepseek-v4.1-flash-free"
+# Reasoning effort, passed as the `#variant` suffix of `opencode run --model`.
+# An explicit --variant overrides it.
+DEFAULT_VARIANT = "max"
 
 HARNESS = "OpenCode"
 
@@ -114,7 +114,7 @@ def permission_config(workdir: Path) -> dict:
 
 
 def reviewer_label(model: str) -> str:
-    """What to pass as `--signed-by`: `OpenCode/Muse-Spark-1.3-Contributor`.
+    """What to pass as `--signed-by`: `OpenCode/Deepseek-V4.1-Flash`.
 
     The provider prefix and the `-free` tier suffix say where and how the model
     ran, not which model read the diff.
@@ -141,8 +141,7 @@ def run_agent(prompt: str, model: str, variant: str, workspace: str,
         # A private server, so the permission config below is the one in force
         # rather than whatever the background service loaded.
         "--standalone",
-        "--model", model,
-        "--variant", variant,
+        "--model", f"{model}#{variant}",
         "--format", "json",
     ]
     env = {**os.environ, "OPENCODE_CONFIG_CONTENT": json.dumps(permission_config(workdir))}

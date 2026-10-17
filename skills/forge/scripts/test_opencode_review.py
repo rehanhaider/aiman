@@ -105,12 +105,12 @@ class TestPermissions(unittest.TestCase):
 
 
 class TestReviewerLabel(unittest.TestCase):
-    def test_default_model_is_muse_spark_free_on_zen(self):
-        self.assertEqual(DEFAULT_MODEL, "opencode/muse-spark-1.3-contributor-free")
-        self.assertEqual(DEFAULT_VARIANT, "xhigh")
+    def test_default_model_is_deepseek_free_on_zen(self):
+        self.assertEqual(DEFAULT_MODEL, "opencode/deepseek-v4.1-flash-free")
+        self.assertEqual(DEFAULT_VARIANT, "max")
 
     def test_default_label_drops_provider_and_tier(self):
-        self.assertEqual(reviewer_label(DEFAULT_MODEL), "OpenCode/Muse-Spark-1.3-Contributor")
+        self.assertEqual(reviewer_label(DEFAULT_MODEL), "OpenCode/Deepseek-V4.1-Flash")
 
     def test_label_follows_a_model_override(self):
         self.assertEqual(reviewer_label("opencode/big-pickle"), "OpenCode/Big-Pickle")
