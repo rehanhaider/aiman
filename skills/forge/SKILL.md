@@ -237,36 +237,46 @@ A return without a review URL is no review at all, unless Posting below sends
 it to the fallback.
 
 **`cursor`** — the same method through `cursor-agent`, out of process and
-read-only. `mizcode-reviewer` gathers and posts; forge's runner does the
-reading, following `mizcode-reviewer`'s `SKILL.md` as the method. It uses
-automatic model selection (`--model auto`) unless `--model` says otherwise.
-The default `signed_by` label is `Cursor/Auto`, which names the
-selection mode rather than claiming a specific underlying model. An explicit
-model override changes the label. Driven directly:
+read-only. `mizcode-reviewer` does every step: `gather` stages the pull
+request, `agent cursor` has Cursor read it with `mizcode-reviewer`'s
+`SKILL.md` as the method, and `post` posts. It uses automatic model selection
+(`--model auto`) unless `agent`'s `--model` says otherwise. The default
+`signed_by` label is `Cursor/Auto`, which names the selection mode rather
+than claiming a specific underlying model. An explicit model override changes
+the label. Driven directly:
 
 ```bash
 node <mizcode-reviewer>/scripts/review.js gather <number> --repo <owner/name>
-python3 <skill>/scripts/cursor_review.py --workdir <workdir>
+node <mizcode-reviewer>/scripts/review.js agent cursor --workdir <workdir>
 node <mizcode-reviewer>/scripts/review.js post --workdir <workdir> \
   --findings-file <workdir>/findings.json \
   --suspicions-file <workdir>/suspicions.json \
-  --signed-by '<the signed_by value cursor_review.py printed, e.g. Cursor/Auto>'
+  --signed-by '<the signed_by value agent printed, e.g. Cursor/Auto>'
 ```
 
 Omit `--suspicions-file` when `suspicions.json` is an empty array.
 
-`cursor_review.py` exits 3 when the agent reports it could not finish. **Treat
-that as no review at all** — re-run it, or fall back to `local`. Never post an
-empty `findings.json` that came from a run which exited non-zero: that publishes
-the all-clear sentence over a review that never happened.
+`agent` exits non-zero when no review happened: 5, `review_incomplete`, when
+the tool reports it could not finish, and 1, `agent_error`, when the tool
+failed or its reply was not a review. `agent cursor` also exits 1 without
+starting Cursor when the pull request's head has project config Cursor would
+load and obey: `.claude/settings.json`, or anything in `.cursor/` but `rules`
+and `mcp.json`. Review such a pull request with `local`. Either way it leaves no `findings.json`
+in the workdir. **Treat that as no review at all** — re-run it, or fall back
+to `local`. Never post an empty `findings.json` that came from a run which
+exited non-zero: that publishes the all-clear sentence over a review that
+never happened.
 
-**`opencode`** — the same as `cursor`, through `opencode_review.py`. It runs
+**`opencode`** — the same as `cursor`, with `agent opencode`. It runs
 DeepSeek V4.1 Flash, free tier, on OpenCode Zen
 (`opencode/deepseek-v4.1-flash-free`) at reasoning effort `max`
-(`--variant max`) unless `--model` or `--variant` says otherwise,
-under a permission config that denies edits and allows only read-only shell
-commands. The default `signed_by` label is
-`OpenCode/Deepseek-V4.1-Flash`. Exit 3 means the same as for `cursor`.
+(`--variant max`) unless `agent`'s `--model` or `--variant` says otherwise,
+under a permission config that allows only its read, grep, glob and list
+tools: no shell, no `gh`, no network. So it reads the code only from
+`gather`'s `head/`:
+run `gather` from a clone of the repository, or `agent opencode` refuses with
+exit 2. The default `signed_by` label is `OpenCode/Deepseek-V4.1-Flash`. Any
+other non-zero exit means the same as for `cursor`.
 
 **`--signed-by` is the visible label, not the machine signature.** `post`
 renders it as a note at the top of the review (`🤖 Reviewed by Claude/Opus-5`)
