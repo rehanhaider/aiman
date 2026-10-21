@@ -2,14 +2,18 @@
 // result or a JSON error. runReview returns the exit code instead of exiting,
 // so tests can call it.
 import { GitHubClientError } from "../../server/src/index.js";
+import { agent } from "./agent.js";
 import { GitFailed, cleanup } from "./cleanup.js";
-import { BadInput, NotConfigured } from "./config.js";
+import { AgentFailed, BadInput, NotConfigured, ReviewIncomplete } from "./config.js";
 import { gather } from "./gather.js";
 import { post } from "./post.js";
 export const USAGE = `Usage: review.js <command> [options]
 
 Commands:
   gather <pr> [--repo <owner/name>]  Stage the pull request for review in a new temp workdir
+  agent <cursor|opencode> --workdir <dir>
+                                     Have Cursor or OpenCode review the staged pull request
+                                     and write findings.json and suspicions.json
   post --workdir <dir> --findings-file <file> [--suspicions-file <file>] --signed-by <label> [--dry-run]
                                      Post the review to the pull request as the App
   cleanup --workdir <dir>            Remove the worktree gather made
@@ -24,12 +28,13 @@ Output is on stdout: JSON, or the review URL from post. Errors are
 
 Exit codes:
   0  done
-  1  not_installed, github_error or git_error
+  1  not_installed, github_error, git_error or agent_error
   2  bad_input
   3  head_moved
   4  not_configured
+  5  review_incomplete
 `;
-const COMMANDS = { gather, post, cleanup };
+const COMMANDS = { gather, agent, post, cleanup };
 function withoutPeriod(text) {
     return text.replace(/\.+$/, "");
 }
@@ -79,6 +84,10 @@ export async function runReview(argv, output, options = {}) {
             return fail(output, 4, { error: "not_configured", message: error.message });
         if (error instanceof GitFailed)
             return fail(output, 1, { error: "git_error", message: error.message });
+        if (error instanceof AgentFailed)
+            return fail(output, 1, { error: "agent_error", message: error.message });
+        if (error instanceof ReviewIncomplete)
+            return fail(output, 5, { error: "review_incomplete", message: error.message });
         if (error instanceof GitHubClientError) {
             if (error.code === "not_installed")
                 return fail(output, 1, { error: "not_installed", message: error.message });

@@ -8,6 +8,13 @@ export class BadInput extends Error {
 }
 export class NotConfigured extends Error {
 }
+// review.js agent: the tool failed, timed out, or printed something that is
+// not a review.
+export class AgentFailed extends Error {
+}
+// review.js agent: the tool ran and said it could not finish the review.
+export class ReviewIncomplete extends Error {
+}
 export function configDir(home = homedir()) {
     return join(home, ".config", "mizcode-reviewer");
 }
