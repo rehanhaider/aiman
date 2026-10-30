@@ -1,6 +1,6 @@
 ---
 name: council
-description: "Get review or feedback from three delegates on three different model providers, then fix what they agree on and re-review until all three are satisfied, without letting scope grow. Trigger this if the user says 'council'."
+description: "Get review or feedback from three delegates on three different models, then fix what they agree on and re-review until all three are satisfied, without letting scope grow. Trigger this if the user says 'council'."
 license: MIT
 source: adapted from t3dotgg/tstack skills/council at 1085050 (MIT, Copyright (c) 2026 Theo Browne)
 ---
@@ -17,7 +17,7 @@ Bring in three delegates to help with the user's request, usually for review or 
 | --- | --- | --- | --- |
 | Fable | `claude-fable-5-1` | Claude Code | `xhigh` |
 | Astra | `gpt-6-astra` | Codex | `xhigh` |
-| DeepSeek | `deepseek-v41-flash-1017` | Cursor | `max` |
+| Opus | `claude-opus-5-5` | Cursor | `xhigh` |
 
 In T3 Code, call `orchestrator_capabilities` to confirm the models, then `delegate_task` to start one delegate per model in parallel. Elsewhere, use the host's subagent tools. If a member is unavailable through its listed provider, report it instead of substituting another model or provider.
 
@@ -44,7 +44,7 @@ Rounds: 2
 | --- | --- | --- |
 | Fable | 7/10 | 9/10 |
 | Astra | 8/10 | 10/10 |
-| DeepSeek | 7/10 | 9/10 |
+| Opus | 7/10 | 9/10 |
 ```
 
 If a delegate gives no score, write `no score`. Do not invent one. If the PR is open, edit its description. Do not post a comment for this. If there is no PR, put the same results in the final reply only.

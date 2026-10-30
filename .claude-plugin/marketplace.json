@@ -24,7 +24,7 @@
     {
       "name": "council",
       "source": "./skills/council",
-      "description": "Get review or feedback from three delegates on three different model providers, then fix what they agree on and re-review until all three are satisfied, without letting scope grow. Trigger this if the user says 'council'.",
+      "description": "Get review or feedback from three delegates on three different models, then fix what they agree on and re-review until all three are satisfied, without letting scope grow. Trigger this if the user says 'council'.",
       "version": "0.1.0",
       "category": "productivity"
     },
