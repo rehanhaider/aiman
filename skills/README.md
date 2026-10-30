@@ -62,6 +62,7 @@ See the [repo README](../README.md) for the difference, updates, and versioning.
 
 | Skill | What it does |
 | --- | --- |
+| `architect` | Sketch types and signatures before code, compare two or more independent candidate designs, stop for sign-off, then implement against the chosen sketch |
 | `grill-me` | Relentless plan-stress-testing interview with a decision log artifact |
 | `unslop` | Strip AI tells out of any writing before it ships |
 

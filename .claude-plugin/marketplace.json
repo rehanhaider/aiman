@@ -8,6 +8,13 @@
   },
   "plugins": [
     {
+      "name": "architect",
+      "source": "./skills/architect",
+      "description": "Sketch types, signatures, and module structure before code, compare at least two independent candidate designs, then implement against the chosen sketch and scrap it if implementation keeps fighting it. Use for /architect, 'architect this', 'design this', or non-trivial work where jumping to code would lock in the wrong shape.",
+      "version": "0.1.0",
+      "category": "productivity"
+    },
+    {
       "name": "browser-extension-builder",
       "source": "./skills/browser-extension-builder",
       "description": "Use when building browser extensions - Chrome, Firefox, or cross-browser. Covers Manifest V3 architecture, content scripts, service workers, popup and side panel UIs, permissions strategy, storage, messaging, monetization, and Chrome Web Store publishing.",
@@ -17,7 +24,7 @@
     {
       "name": "forge",
       "source": "./skills/forge",
-      "description": "Take a tracked issue from wherever it lives — Linear, GitHub Issues, or an in-repo document — through implementation, a pull request, and a self-driving review-and-rectify loop, stopping at a verified ready-to-merge state. It merges only under --merge, and only a clean PR. The reviewer is local, Cursor, OpenCode, or Codex. Use when the user asks to ship, land, or implement an issue end to end, to shepherd or babysit a pull request through review, to keep resolving review comments until a PR is clean, or invokes \"/forge\" or \"/ship-issue\". With --hitl, the run splits the work into an approved plan. Each tranche waits uncommitted for the user's review, and the run fixes what they flag before asking to commit. Review findings get the same gate: the user agrees each proposed resolution before any edit, then signs off the fixes before any commit.",
+      "description": "Take a tracked issue from wherever it lives \u2014 Linear, GitHub Issues, or an in-repo document \u2014 through implementation, a pull request, and a self-driving review-and-rectify loop, stopping at a verified ready-to-merge state. It merges only under --merge, and only a clean PR. The reviewer is local, Cursor, OpenCode, or Codex. Use when the user asks to ship, land, or implement an issue end to end, to shepherd or babysit a pull request through review, to keep resolving review comments until a PR is clean, or invokes \"/forge\" or \"/ship-issue\". With --hitl, the run splits the work into an approved plan. Each tranche waits uncommitted for the user's review, and the run fixes what they flag before asking to commit. Review findings get the same gate: the user agrees each proposed resolution before any edit, then signs off the fixes before any commit.",
       "version": "0.5.0",
       "category": "productivity"
     },
@@ -66,7 +73,7 @@
     {
       "name": "seo-expert",
       "source": "./skills/seo-expert",
-      "description": "SEO improvement, recovery, and audit skill for existing sites — plus GEO (AI-search optimization for Perplexity, ChatGPT Search, Gemini), AEO (snippets/voice), and keyword analysis. Modes: IMPROVE (default — ground truth from the codebase and Search Console, prioritized fix backlog, shipped with regression tests), RECOVER (traffic drops, deindexing, migration damage), AUDIT (scored SEO/GEO/AEO report), plus direct implementation of named techniques from a 30-entry playbook (meta tags, schema markup, sitemaps, redirects, llms.txt, OG images, Core Web Vitals). Use when the user wants to improve SEO, fix rankings, diagnose a traffic drop, recover from a migration, audit a site, check AI search readiness, or target keywords.",
+      "description": "SEO improvement, recovery, and audit skill for existing sites \u2014 plus GEO (AI-search optimization for Perplexity, ChatGPT Search, Gemini), AEO (snippets/voice), and keyword analysis. Modes: IMPROVE (default \u2014 ground truth from the codebase and Search Console, prioritized fix backlog, shipped with regression tests), RECOVER (traffic drops, deindexing, migration damage), AUDIT (scored SEO/GEO/AEO report), plus direct implementation of named techniques from a 30-entry playbook (meta tags, schema markup, sitemaps, redirects, llms.txt, OG images, Core Web Vitals). Use when the user wants to improve SEO, fix rankings, diagnose a traffic drop, recover from a migration, audit a site, check AI search readiness, or target keywords.",
       "version": "0.1.0",
       "category": "writing"
     },
@@ -80,7 +87,7 @@
     {
       "name": "technical-writer",
       "source": "./skills/technical-writer",
-      "description": "Produce high-impact technical articles using the \"Sewing and Reaping\" methodology — authentic engineering exploration first, then narrative — with built-in SEO, GEO (AI search), and AEO (snippets/voice) scaffolding. Generates SVG diagrams inline or a JSON image spec for an image generator. Use when the user wants to write a technical blog post, engineering essay, case study, deep-dive, tutorial, postmortem, or launch announcement; to draft, outline, structure, optimize, audit, or review an article for a technical audience; to find the narrative kernel or angle in work they've built; to add diagrams or hero images to technical content; or to rewrite AI-sounding text so it reads like a real engineer wrote it (de-AI a draft, remove AI tells, humanize prose). Writes in a practical walkthrough voice with a hard ban list of AI tells. Trigger on \"help me write about X\", \"draft a blog post\", \"write a tutorial\", \"find the story in this work\", \"make this rank on AI search\", \"this sounds like AI\", or \"review my draft\".",
+      "description": "Produce high-impact technical articles using the \"Sewing and Reaping\" methodology \u2014 authentic engineering exploration first, then narrative \u2014 with built-in SEO, GEO (AI search), and AEO (snippets/voice) scaffolding. Generates SVG diagrams inline or a JSON image spec for an image generator. Use when the user wants to write a technical blog post, engineering essay, case study, deep-dive, tutorial, postmortem, or launch announcement; to draft, outline, structure, optimize, audit, or review an article for a technical audience; to find the narrative kernel or angle in work they've built; to add diagrams or hero images to technical content; or to rewrite AI-sounding text so it reads like a real engineer wrote it (de-AI a draft, remove AI tells, humanize prose). Writes in a practical walkthrough voice with a hard ban list of AI tells. Trigger on \"help me write about X\", \"draft a blog post\", \"write a tutorial\", \"find the story in this work\", \"make this rank on AI search\", \"this sounds like AI\", or \"review my draft\".",
       "version": "0.1.0",
       "category": "writing"
     },
@@ -94,7 +101,7 @@
     {
       "name": "unslop",
       "source": "./skills/unslop",
-      "description": "Cut AI writing patterns from a piece of writing. Load it before your first reply in a session and write every reply to the user by its rules. When the user invokes /unslop, rewrite your last reply.",
+      "description": "Cut AI tells from any writing.",
       "version": "0.1.1",
       "category": "writing"
     },
