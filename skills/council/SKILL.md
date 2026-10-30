@@ -17,7 +17,7 @@ Bring in three delegates to help with the user's request, usually for review or 
 | --- | --- | --- | --- |
 | Fable | `claude-fable-5-1` | Claude Code | `xhigh` |
 | Astra | `gpt-6-astra` | Codex | `xhigh` |
-| Opus | `claude-opus-5-5` | Cursor | `xhigh` |
+| Opus | `claude-opus-5-5` | Claude Code | `xhigh` |
 
 In T3 Code, call `orchestrator_capabilities` to confirm the models, then `delegate_task` to start one delegate per model in parallel. Elsewhere, use the host's subagent tools. If a member is unavailable through its listed provider, report it instead of substituting another model or provider.
 
