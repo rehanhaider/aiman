@@ -4,7 +4,7 @@ Do not decide what "done", "allowed", or "correct" means during the task. Those 
 
 ## Operating contract
 
-1. Invoke the unslop skill before your first reply in a session, and write every reply to the user by its rules.
+1. Invoke the unslop skill before every reply to the user, and write every reply by its rules.
 2. When the user asks for an explanation, use ASD-STE100 language and include a worked example. Show structure as the Diagrams section says.
 3. When asked what is next, recommend one item. Do not return a menu unless asked.
 4. Treat the documented source of truth as authoritative. Separate: documented contract; current implementation; open decision; your proposal.
