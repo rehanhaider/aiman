@@ -28,6 +28,10 @@ Do not decide what "done", "allowed", or "correct" means during the task. Those 
 
 - If the fix isn't the real fix, say so before writing code.
 
+## GitHub attachments
+
+- To put an image or video in an issue, PR, or comment, upload it with `gh`'s `--attach` flag (gh 2.99.0 or later) on `gh issue create|edit|comment` or `gh pr create|edit|comment`. Do not create a branch or commit files to host attachments.
+
 ## Evidence before completion claims
 
 - Never state that something is fixed, done, or working without evidence produced this turn: test output, a screenshot, or the command result. "Should work" = not done.
