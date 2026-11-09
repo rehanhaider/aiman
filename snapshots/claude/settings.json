@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Invoke the unslop skill before every reply to the user, and write every reply by its rules.'"
+          }
+        ]
+      }
+    ]
+  }
+}

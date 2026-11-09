@@ -7,7 +7,7 @@
 //   aiman release <s> <lvl>  bump a skill's version
 //   aiman link [names...]    copy skills into .claude/skills and .agents/skills
 //   aiman unlink [names...]  remove those copies
-//   aiman deploy             copy snapshots/ to the live instruction files
+//   aiman deploy             copy snapshots/ to the live instruction and settings files
 //   aiman apply              make this device match global.json, then deploy
 //   aiman sync               push this repo, then apply on every device in global.json
 //
@@ -415,6 +415,11 @@ const SNAPSHOTS = [
   { source: join(REPO, "snapshots", "codex", "AGENTS.md"), target: join(homedir(), ".codex", "AGENTS.md") },
 ];
 
+// Each settings snapshot and the live settings file it is merged into.
+const SETTINGS = [
+  { source: join(REPO, "snapshots", "claude", "settings.json"), target: join(homedir(), ".claude", "settings.json") },
+];
+
 function deploy(): number {
   for (const { source, target } of SNAPSHOTS) {
     const next = readFileSync(source, "utf8");
@@ -424,6 +429,23 @@ function deploy(): number {
       continue;
     }
     if (current !== null) spawnSync("diff", ["-u", target, source], { stdio: "inherit" });
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, next);
+    console.log(`${current === null ? "created" : "updated"}    ${target}`);
+  }
+
+  // Settings files are also written by the tools themselves, so a snapshot owns
+  // only its top-level keys. Each one replaces the same key in the live file.
+  for (const { source, target } of SETTINGS) {
+    const owned = JSON.parse(readFileSync(source, "utf8")) as Record<string, unknown>;
+    const current = existsSync(target) ? readFileSync(target, "utf8") : null;
+    const live = current === null ? {} : (JSON.parse(current) as Record<string, unknown>);
+    if (Object.keys(owned).every((key) => JSON.stringify(live[key]) === JSON.stringify(owned[key]))) {
+      console.log(`unchanged  ${target}`);
+      continue;
+    }
+    const next = `${JSON.stringify({ ...live, ...owned }, null, 2)}\n`;
+    if (current !== null) spawnSync("diff", ["-u", target, "-"], { input: next, stdio: ["pipe", "inherit", "inherit"] });
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, next);
     console.log(`${current === null ? "created" : "updated"}    ${target}`);
