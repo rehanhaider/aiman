@@ -209,6 +209,40 @@ export async function assertHead(repo, pullNumber, expectedSha, token, options =
         throw new GitHubClientError("head_moved", `The pull request head is now ${currentHead}, not ${expectedSha}. Review the new head and post again.`, { currentHead });
     }
 }
+// GitHub reports maintain as write and triage as read, so write and admin
+// are the two values that allow a post.
+export async function assertCanWrite(repo, login, token, options = {}) {
+    const response = await request(options, "GET", `${repoPath(repo)}/collaborators/${encodeURIComponent(login)}/permission`, token);
+    let permission = "none";
+    if (response.status !== 404)
+        permission = (await json(response)).permission;
+    if (permission !== "write" && permission !== "admin") {
+        throw new GitHubClientError("no_access", `${login} has ${permission} permission on ${repo.owner}/${repo.name}. Posting a review needs write permission.`);
+    }
+}
+// Asks GitHub whether token is a user access token that the App with this
+// client ID issued, and returns the user's login, or null for any other
+// token. The check uses the App's client ID and secret, not the token itself.
+export async function checkUserToken(clientId, clientSecret, token, options = {}) {
+    const doFetch = options.fetch ?? fetch;
+    const response = await doFetch(`${options.baseUrl ?? API_URL}/applications/${encodeURIComponent(clientId)}/token`, {
+        method: "POST",
+        headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
+            "Content-Type": "application/json",
+            "User-Agent": USER_AGENT,
+            "X-GitHub-Api-Version": API_VERSION,
+        },
+        body: JSON.stringify({ access_token: token }),
+    });
+    if (response.status === 404)
+        return null;
+    const checked = await json(response);
+    if (checked.app?.client_id !== clientId || typeof checked.user?.login !== "string")
+        return null;
+    return checked.user.login;
+}
 // The event is always COMMENT. This client never approves or requests changes.
 export async function postReview(repo, pullNumber, commitId, review, token, options = {}) {
     const response = await request(options, "POST", `${repoPath(repo)}/pulls/${pullNumber}/reviews`, token, {
@@ -295,6 +329,8 @@ export async function postReviewAsApp(input, options = {}) {
     const appJwt = createAppJwt(input.appId, input.privateKey);
     const installationId = await getInstallationId(input.repo, appJwt, options);
     const token = await createInstallationToken(installationId, input.repo, appJwt, options);
+    if (input.forUser !== undefined)
+        await assertCanWrite(input.repo, input.forUser, token, options);
     await assertHead(input.repo, input.pullNumber, input.sha, token, options);
     const login = await getAppLogin(appJwt, options);
     const existing = await findPostedReview(input.repo, input.pullNumber, input.sha, input.review, login, token, options);
