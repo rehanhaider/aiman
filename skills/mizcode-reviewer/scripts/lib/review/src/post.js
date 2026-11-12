@@ -1,6 +1,7 @@
 // review.js post: render findings.json into inline comments and a
 // summary, check every anchor against the diff, and post the review as the
-// App. The validation rules and the summary text match the Python pr-review
+// App. With --dry-run it prints the review as the input of the shared bot's
+// submit_review MCP tool, which is how the skill posts. The validation rules and the summary text match the Python pr-review
 // post; forge's watcher keys on the summary, so keep it byte-for-byte.
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -28,7 +29,9 @@ Options:
   --findings-file <file>    JSON array of findings
   --suspicions-file <file>  JSON array of severe candidates that could not be proved
   --signed-by <label>       Who read the diff, as harness/model, e.g. Claude/Opus-5
-  --dry-run                 Print the review and post nothing
+  --dry-run                 Print the review and post nothing. The output is the
+                            input of the submit_review MCP tool: repo,
+                            pull_number, commit_sha, body and comments
   -h, --help                Show this help
 `;
 export const SEVERITIES = ["P0", "P1", "P2", "P3"];
@@ -404,7 +407,13 @@ export async function post(argv, options) {
         comments: inline.map(toComment),
     };
     if (values["dry-run"]) {
-        return `${JSON.stringify({ commit_id: state.headSha, event: "COMMENT", body: review.body, comments: review.comments }, null, 2)}\n`;
+        return `${JSON.stringify({
+            repo: `${state.repo.owner}/${state.repo.name}`,
+            pull_number: state.pr,
+            commit_sha: state.headSha,
+            body: review.body,
+            comments: review.comments,
+        }, null, 2)}\n`;
     }
     const config = await loadConfig(options.home);
     const posted = await postReviewAsApp({ appId: config.appId, privateKey: config.privateKey, repo: state.repo, pullNumber: state.pr, sha: state.headSha, review }, options);

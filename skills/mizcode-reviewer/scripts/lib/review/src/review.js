@@ -7,7 +7,7 @@ import { GitFailed, cleanup } from "./cleanup.js";
 import { AgentFailed, BadInput, NotConfigured, ReviewIncomplete } from "./config.js";
 import { gather } from "./gather.js";
 import { post } from "./post.js";
-import { SignInFailed, login, token } from "./signin.js";
+import { NotSignedIn, SignInFailed, login, token } from "./signin.js";
 export const USAGE = `Usage: review.js <command> [options]
 
 Commands:
@@ -18,13 +18,15 @@ Commands:
   post --workdir <dir> --findings-file <file> [--suspicions-file <file>] --signed-by <label> [--dry-run]
                                      Post the review to the pull request as the App
   cleanup --workdir <dir>            Remove the worktree gather made
-  login                              Sign in to GitHub for the shared bot, once per machine
+  login [--wait]                     Sign in to GitHub for the shared bot, once per machine
   token                              Print the Authorization header for the shared bot's MCP server
 
 Run review.js <command> --help for a command's options.
 
-Settings: ~/.config/mizcode-reviewer/config.json holds {"app_id": <id>} and,
-optionally, "key_file", which defaults to app.pem beside it.
+gather reads the pull request as the signed-in user: run login first. post
+without --dry-run posts with an App key from ~/.config/mizcode-reviewer/config.json
+({"app_id": <id>, "key_file": <path>}); the skill posts through the shared
+bot's submit_review MCP tool instead.
 
 Output is on stdout: JSON, or the review URL from post. Errors are
 {"error": "...", "message": "..."} on stderr.
@@ -34,7 +36,7 @@ Exit codes:
   1  not_installed, github_error, git_error, agent_error or sign_in_failed
   2  bad_input
   3  head_moved
-  4  not_configured
+  4  not_configured or not_signed_in
   5  review_incomplete
 `;
 const COMMANDS = {
@@ -84,7 +86,7 @@ export async function runReview(argv, output, options = {}) {
         });
     }
     try {
-        output.stdout(await command(rest, { progress: (text) => output.stderr(text), ...options }));
+        output.stdout(await command(rest, options));
         return 0;
     }
     catch (error) {
@@ -92,6 +94,8 @@ export async function runReview(argv, output, options = {}) {
             return fail(output, 2, { error: "bad_input", message: error.message });
         if (error instanceof NotConfigured)
             return fail(output, 4, { error: "not_configured", message: error.message });
+        if (error instanceof NotSignedIn)
+            return fail(output, 4, { error: "not_signed_in", message: error.message });
         if (error instanceof GitFailed)
             return fail(output, 1, { error: "git_error", message: error.message });
         if (error instanceof AgentFailed)

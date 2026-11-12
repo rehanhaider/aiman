@@ -1,12 +1,13 @@
-// review.js gather: read the PR as the App and stage what the review
+// review.js gather: read the PR as the signed-in user and stage what the review
 // needs in a new temp workdir. The files and the JSON printed match the
 // Python pr-review gather.
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { GitHubClientError, ReviewThreadsError, createRepoToken, getPullRequest, getPullRequestDiff, getReviewThreads, listPullRequestFiles, } from "../../server/src/index.js";
-import { BadInput, loadConfig } from "./config.js";
+import { GitHubClientError, ReviewThreadsError, getPullRequest, getPullRequestDiff, getReviewThreads, listPullRequestFiles, } from "../../server/src/index.js";
+import { BadInput } from "./config.js";
+import { NotSignedIn, userToken } from "./signin.js";
 import { localDiff, makeWorktree, originRepo } from "./git.js";
 const OPTIONS = {
     repo: { type: "string" },
@@ -87,9 +88,23 @@ export async function gather(argv, options) {
         return GATHER_USAGE;
     const { repo, pullNumber } = args;
     const repoName = `${repo.owner}/${repo.name}`;
-    const config = await loadConfig(options.home);
-    const token = await createRepoToken(config.appId, config.privateKey, repo, options);
-    const pull = await getPullRequest(repo, pullNumber, token, options);
+    // The signed-in user's token reads the pull request. It can read only
+    // where mizcode-reviewer[bot] is installed and the user has access.
+    const token = await userToken(options);
+    let pull;
+    try {
+        pull = await getPullRequest(repo, pullNumber, token, options);
+    }
+    catch (error) {
+        // A revoked token still looks valid in token.json until GitHub refuses it.
+        if (error instanceof GitHubClientError && error.status === 401) {
+            throw new NotSignedIn("GitHub rejected the saved sign-in. Run review.js login.");
+        }
+        if (error instanceof GitHubClientError && error.status === 404) {
+            throw new GitHubClientError("not_installed", `Could not read ${repoName}#${pullNumber}. Check the pull request number, and that mizcode-reviewer[bot] is installed on ${repoName}: https://github.com/apps/mizcode-reviewer/installations/new`);
+        }
+        throw error;
+    }
     const files = await listPullRequestFiles(repo, pullNumber, token, options);
     const workdir = await mkdtemp(join(options.tmpdir ?? tmpdir(), `mizcode-review-${pullNumber}-`));
     const notes = [];
