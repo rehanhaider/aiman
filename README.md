@@ -107,7 +107,7 @@ Claude Code does not read `.agents/skills`, which is why the installer writes bo
 that share them:
 
 ```json
-{ "skills": ["forge", "mizcode-reviewer", "svg-animations", "unslop"], "devices": ["PC", "thinkbox"] }
+{ "skills": ["forge", "svg-animations", "unslop"], "devices": ["PC", "thinkbox"] }
 ```
 
 To change the global set, edit `skills`, commit, and run:

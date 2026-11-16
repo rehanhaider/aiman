@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """forge's `gh` fallback for posting a review as the user.
 
-forge posts reviews through mizcode-reviewer's `review.js post`, as the
-`mizcode-reviewer[bot]` GitHub App. When the App is not configured or not
-installed on the repository, forge posts the same findings with this script
-instead, over the workdir `review.js gather` made.
+forge posts reviews as `mizcode-reviewer[bot]` through the mizcode-reviewer
+plugin's `submit_review` tool. When that tool is not available or the App is
+not installed on the repository, forge posts the same findings with this
+script instead, over the workdir `review.js gather` made.
 
 It renders findings.json into Codex-style inline comments plus a summary body,
 then posts the review. The reviews endpoint is atomic: one comment anchored to
@@ -129,7 +129,7 @@ def finding_to_comment(finding: dict) -> dict:
 # Stable identifier proving a review was posted by tooling rather than typed by
 # hand. Rendered as an HTML comment: invisible on GitHub, returned verbatim by
 # the API. pr_watch.py requires this exact string by default, and
-# mizcode-reviewer's `review.js post` writes the same one; changing it here
+# mizcode-reviewer's `review.js post` renders the same one; changing it here
 # without changing it there breaks the clean verdict.
 SIGNATURE = "rehanhaider/pr-review-skill"
 

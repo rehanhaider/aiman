@@ -70,8 +70,9 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
   One reviewer per run. Every posted review from `local`, `cursor`, or `opencode` opens
   with a note naming who read the diff, as harness/model — `Claude/Opus-5`,
   `Cursor/Grok-4.7` — so the PR's history says which model said what. These
-  three post as the `mizcode-reviewer[bot]` GitHub App, with a narrow fallback
-  to `gh` as the user (phase 4, Posting).
+  three post as `mizcode-reviewer[bot]` through the `mizcode-reviewer` plugin's
+  `submit_review` tool, with a narrow fallback to `gh` as the user (phase 4,
+  Posting).
 
 - `--pr` — resume the loop on an existing PR and skip implementation.
 - `--cycles` — hard cap on rectification rounds. Unset by default: the loop runs
@@ -87,7 +88,15 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
   before merging. See phase 7.
 
 In the commands below, `<skill>` is the directory containing this file, and
-`<mizcode-reviewer>` is the sibling skill directory of that name.
+`<mizcode-reviewer>` is the `mizcode-reviewer` skill from the
+`mizcode-reviewer` plugin: the newest
+`~/.claude/plugins/cache/mizcode-reviewer/mizcode-reviewer/*/skills/mizcode-reviewer`
+in Claude Code, or the newest
+`~/.codex/plugins/cache/mizcode-reviewer/mizcode-reviewer/*/skills/mizcode-reviewer`
+in Codex. The plugin also gives this session the `submit_review` tool. If
+neither folder exists, stop the `local`, `cursor` and `opencode` reviewers and
+tell the user to install the plugin, as the README of
+`Mizanic/mizcode-reviewer` says.
 
 ## 1. Resolve the target and the source
 
@@ -221,25 +230,22 @@ Give the subagent:
 - the instruction to sign as `Claude/<model>` with the model the subagent
   itself is running on, `Claude/Opus-5` for example, never a label handed
   down from here;
-- the instruction to return the workdir, the review URL that `post` prints, or
-  the exit code and the JSON error from stderr when the post did not land.
+- the instruction to return the workdir and the review URL that
+  `submit_review` returns, or the error it returned (or the exit code and the
+  JSON error from stderr of the command that failed) when the review did not
+  land.
 
-Its last command is the post:
-
-```bash
-node <mizcode-reviewer>/scripts/review.js post --workdir <workdir> \
-  --findings-file findings.json \
-  --signed-by 'Claude/<the model the subagent is running on, e.g. Opus-5>'
-```
-
-The subagent posts its outcome to GitHub, which is what the next phase reads.
+The skill posts by rendering the review with `post --dry-run` and passing that
+JSON, unchanged, to `submit_review`. The subagent posts its outcome to GitHub,
+which is what the next phase reads.
 A return without a review URL is no review at all, unless Posting below sends
 it to the fallback.
 
 **`cursor`** — the same method through `cursor-agent`, out of process and
 read-only. `mizcode-reviewer` does every step: `gather` stages the pull
 request, `agent cursor` has Cursor read it with `mizcode-reviewer`'s
-`SKILL.md` as the method, and `post` posts. It uses automatic model selection
+`SKILL.md` as the method, `post --dry-run` renders the review, and you pass
+that JSON unchanged to `submit_review`. It uses automatic model selection
 (`--model auto`) unless `agent`'s `--model` says otherwise. The default
 `signed_by` label is `Cursor/Auto`, which names the selection mode rather
 than claiming a specific underlying model. An explicit model override changes
@@ -251,10 +257,14 @@ node <mizcode-reviewer>/scripts/review.js agent cursor --workdir <workdir>
 node <mizcode-reviewer>/scripts/review.js post --workdir <workdir> \
   --findings-file <workdir>/findings.json \
   --suspicions-file <workdir>/suspicions.json \
-  --signed-by '<the signed_by value agent printed, e.g. Cursor/Auto>'
+  --signed-by '<the signed_by value agent printed, e.g. Cursor/Auto>' \
+  --dry-run
+# then call submit_review with the printed JSON as its arguments
 ```
 
-Omit `--suspicions-file` when `suspicions.json` is an empty array.
+Omit `--suspicions-file` when `suspicions.json` is an empty array. If `gather`
+exits 4 with `not_signed_in`, sign the user in as step 1 of
+`<mizcode-reviewer>/SKILL.md` says, then run `gather` again.
 
 `agent` exits non-zero when no review happened: 5, `review_incomplete`, when
 the tool reports it could not finish, and 1, `agent_error`, when the tool
@@ -283,22 +293,23 @@ renders it as a note at the top of the review (`🤖 Reviewed by Claude/Opus-5`)
 and always adds the hidden marker `pr_watch.py` keys on as an HTML comment, so
 no label can leave the loop stuck. Name the harness and the model that actually
 read the diff; a review signed as a model that did not run is a false record.
-Keep the review URL that `post` prints on success — phase 5 uses it to prove
-this specific review landed.
+Keep the review URL (`html_url`) that `submit_review` returns on success —
+phase 5 uses it to prove this specific review landed.
 
 ### Posting, and the `gh` fallback
 
-`mizcode-reviewer`'s `post` posts only as the `mizcode-reviewer[bot]` GitHub
-App, never as the user. forge owns the one fallback, and keeps it narrow so a
-review never lands under the user's name by accident:
+`submit_review` posts only as `mizcode-reviewer[bot]`, never as the user.
+forge owns the one fallback, and keeps it narrow so a review never lands under
+the user's name by accident:
 
-| `post` ends with | What forge does |
+| `submit_review` returns | What forge does |
 | --- | --- |
-| exit 0 and a review URL | Use it. |
-| exit 4, `not_configured`: no `~/.config/mizcode-reviewer/config.json` or no `app_id` | Post the same findings with `gh` as the user, below, and say in one line why. |
-| exit 1 with `"error": "not_installed"`: the App isn't installed on this repository | The same fallback, and say why. |
-| exit 3, `head_moved` | No fallback. Review the new head, below. |
-| any other error, including a missing key file, `bad_input` or `github_error` | No fallback. Stop and report the error verbatim. |
+| `review_id` and `html_url` | Use it. |
+| the tool is not available in this session: the plugin's MCP server is not set up | Post the same findings with `gh` as the user, below, and say in one line why. |
+| `"error": "not_installed"`: the App isn't installed on this repository | The same fallback, and say why. |
+| `"error": "unauthorized"`, or HTTP 403 | No fallback. Sign the user in as step 1 of `<mizcode-reviewer>/SKILL.md` says, then call `submit_review` again. |
+| `"error": "head_moved"` | No fallback. Review the new head, below. |
+| any other error, including `no_access`, `github_error`, or a `post --dry-run` that exits non-zero | No fallback. Stop and report the error verbatim. |
 
 The fallback reuses the workdir `gather` made:
 
@@ -311,8 +322,8 @@ python3 <skill>/scripts/gh_post.py --workdir <workdir> \
 It carries the same all-clear sentence and hidden marker, so phase 5 reads it
 the same way.
 
-If `post` exits 3, whether the subagent reports it or `cursor`
-or `opencode` hits it, the head moved while the review was being written. Do not retry the
+If `submit_review` returns `head_moved`, whether the subagent reports it or
+`cursor` or `opencode` hits it, the head moved while the review was being written. Do not retry the
 post — review the new head from the beginning. After two consecutive head
 moves, stop and tell the user something keeps pushing to the branch.
 
@@ -354,14 +365,14 @@ clean:
 
 ```bash
 python3 <skill>/scripts/pr_watch.py state <number> --repo <owner/name> \
-  --require-review '<review url from post>'
+  --require-review '<html_url from submit_review>'
 ```
 
 The signature is required by default, so nothing extra to pass here. An
 external reviewer that answers in text signs its own way, which is why the
 `codex` command above carries `--allow-unsigned`; never add that flag on the
 `local`, `cursor`, or `opencode` paths, as it removes the only thing separating
-an automated review from a typed comment. All three post through `post`, or
+an automated review from a typed comment. All three render through `post`, or
 `gh_post.py` on the fallback, so all three are already signed — the marker is a hidden HTML comment, so its absence from
 the rendered page means nothing.
 
