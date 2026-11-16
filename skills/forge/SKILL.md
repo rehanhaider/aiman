@@ -88,14 +88,26 @@ These hold for the whole run. Breaking one is a failure, not a judgement call.
   before merging. See phase 7.
 
 In the commands below, `<skill>` is the directory containing this file, and
-`<mizcode-reviewer>` is the `mizcode-reviewer` skill from the
-`mizcode-reviewer` plugin: the newest
-`~/.claude/plugins/cache/mizcode-reviewer/mizcode-reviewer/*/skills/mizcode-reviewer`
-in Claude Code, or the newest
-`~/.codex/plugins/cache/mizcode-reviewer/mizcode-reviewer/*/skills/mizcode-reviewer`
-in Codex. The plugin also gives this session the `submit_review` tool. If
-neither folder exists, stop the `local`, `cursor` and `opencode` reviewers and
-tell the user to install the plugin, as the README of
+`<mizcode-reviewer>` is `<plugin root>/skills/mizcode-reviewer`, the skill
+from the `mizcode-reviewer` plugin. The plugin also gives this session the
+`check_repo` and `submit_review` tools. Find the plugin root:
+
+- **Claude Code:** the `installPath` that
+  `~/.claude/plugins/installed_plugins.json` records for the installed
+  version. The cache keeps earlier versions beside it, and an update can
+  touch an old folder after the new one, so never pick a folder by name or
+  date:
+
+  ```bash
+  python3 -c 'import json,os; print(json.load(open(os.path.expanduser("~/.claude/plugins/installed_plugins.json")))["plugins"]["mizcode-reviewer@mizcode-reviewer"][0]["installPath"])'
+  ```
+
+- **Codex:** the one folder in
+  `~/.codex/plugins/cache/mizcode-reviewer/mizcode-reviewer/`, named for the
+  installed version. Codex keeps no other.
+
+If there is no plugin root, stop the `local`, `cursor` and `opencode`
+reviewers and tell the user to install the plugin, as the README of
 `Mizanic/mizcode-reviewer` says.
 
 ## 1. Resolve the target and the source
@@ -233,7 +245,11 @@ Give the subagent:
 - the instruction to return the workdir and the review URL that
   `submit_review` returns, or the error it returned (or the exit code and the
   JSON error from stderr of the command that failed) when the review did not
-  land.
+  land;
+- the instruction that if `check_repo` returns `not_installed`, it must not
+  stop as the skill says: it finishes the review, writes `findings.json` and
+  `suspicions.json` in the workdir, does not call `submit_review`, and returns
+  the workdir and `not_installed`, so Posting below can use the `gh` fallback.
 
 The skill posts by rendering the review with `post --dry-run` and passing that
 JSON, unchanged, to `submit_review`. The subagent posts its outcome to GitHub,
@@ -253,6 +269,7 @@ the label. Driven directly:
 
 ```bash
 node <mizcode-reviewer>/scripts/review.js gather <number> --repo <owner/name>
+# then call check_repo with {"repo": "<owner/name>"}; see below
 node <mizcode-reviewer>/scripts/review.js agent cursor --workdir <workdir>
 node <mizcode-reviewer>/scripts/review.js post --workdir <workdir> \
   --findings-file <workdir>/findings.json \
@@ -264,7 +281,11 @@ node <mizcode-reviewer>/scripts/review.js post --workdir <workdir> \
 
 Omit `--suspicions-file` when `suspicions.json` is an empty array. If `gather`
 exits 4 with `not_signed_in`, sign the user in as step 1 of
-`<mizcode-reviewer>/SKILL.md` says, then run `gather` again.
+`<mizcode-reviewer>/SKILL.md` says, then run `gather` again. On `check_repo`'s
+`{"ok": true}`, start the agent. On `no_access` or `github_error`, stop before
+starting it and report the message. On `not_installed`, or if the tool is not
+available, review anyway: Posting below sends the findings to the `gh`
+fallback.
 
 `agent` exits non-zero when no review happened: 5, `review_incomplete`, when
 the tool reports it could not finish, and 1, `agent_error`, when the tool
@@ -306,7 +327,7 @@ the user's name by accident:
 | --- | --- |
 | `review_id` and `html_url` | Use it. |
 | the tool is not available in this session: the plugin's MCP server is not set up | Post the same findings with `gh` as the user, below, and say in one line why. |
-| `"error": "not_installed"`: the App isn't installed on this repository | The same fallback, and say why. |
+| `"error": "not_installed"`, from `check_repo` before the review or from `submit_review`: the App isn't installed on this repository | The same fallback, and say why. |
 | `"error": "unauthorized"`, or HTTP 403 | No fallback. Sign the user in as step 1 of `<mizcode-reviewer>/SKILL.md` says, then call `submit_review` again. |
 | `"error": "head_moved"` | No fallback. Review the new head, below. |
 | any other error, including `no_access`, `github_error`, or a `post --dry-run` that exits non-zero | No fallback. Stop and report the error verbatim. |
