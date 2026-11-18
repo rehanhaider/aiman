@@ -124,8 +124,9 @@ It never touches real directories or links to anything else, so tool-managed ski
 are live at once; project installs from `aiman link` stay copies.
 
 `sync` refuses to run with uncommitted changes, pushes any unpushed commits, then for
-each device: runs `apply` here if the name matches this machine's hostname, otherwise
-SSHes in, pulls, and runs `apply` from the same path under `~`. It prints one line per
+each device: runs `apply` here if the name matches this machine's hostname (ignoring
+any domain, so `macbook` matches `macbook.local`), otherwise SSHes in, pulls, and runs
+`apply` from the same path under `~`. It prints one line per
 device and exits non-zero if any failed. Devices need passwordless SSH, a clone of this
 repo at the same path, and Node >= 22.6 on a login shell's PATH.
 

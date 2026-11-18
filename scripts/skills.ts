@@ -459,7 +459,9 @@ const GLOBAL_DIRS = [join(homedir(), ".claude", "skills"), join(homedir(), ".age
 
 type Global = { skills: string[]; devices: string[] };
 
-const isThisDevice = (device: string) => device.toLowerCase() === hostname().toLowerCase();
+// Compare short names: macOS reports "macbook.local" where Tailscale and SSH use "macbook".
+const shortName = (host: string) => host.split(".")[0].toLowerCase();
+const isThisDevice = (device: string) => shortName(device) === shortName(hostname());
 
 /** Make this device's global skill dirs match global.json, then deploy the instruction files. */
 function apply(): number {
