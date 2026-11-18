@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# ai-status: Claude, Codex and Cursor usage limits in one screen.
+# Portable: Linux and macOS, bash 3.2+. Needs curl and jq; each section is
+# skipped with a note when its CLI isn't installed.
 
 set -o pipefail
 
@@ -7,9 +10,19 @@ usage() {
     echo "  --once    Show usage once and exit"
 }
 
-# Live mode is the default. watch redraws the same screen every 5 minutes.
+REFRESH_SECONDS=300
+
+# Live mode is the default: redraw the same screen every 5 minutes.
 if [[ $# -eq 0 ]]; then
-    exec env AI_STATUS_COLOR=1 watch -c -n 300 -t -x -- "$0" --once
+    restore() { printf '\e[?25h'; }
+    trap 'restore; exit 0' INT TERM HUP
+    trap restore EXIT
+    printf '\e[?25l\e[H\e[2J\n  Loading AI usage…\n'
+    while :; do
+        screen=$(AI_STATUS_COLOR=1 "$0" --once)
+        printf '\e[H\e[2J%s\n' "$screen"
+        sleep "$REFRESH_SECONDS"
+    done
 fi
 
 if [[ $# -ne 1 || "$1" != "--once" ]]; then
@@ -20,13 +33,34 @@ fi
 LABEL_WIDTH=17
 BAR_WIDTH=24
 
-# Colour when writing to a terminal or when watch (which reads a pipe) asked for it.
+# Colour when writing to a terminal or when live mode (which captures output) asked for it.
 if [[ -t 1 || -n "${AI_STATUS_COLOR:-}" ]] && [[ -z "${NO_COLOR:-}" ]]; then
     RESET=$'\e[0m' BOLD=$'\e[1m' DIM=$'\e[2m'
     GREEN=$'\e[32m' AMBER=$'\e[33m' RED=$'\e[31m'
 else
     RESET='' BOLD='' DIM='' GREEN='' AMBER='' RED=''
 fi
+
+# --- Portable date helpers (GNU date on Linux, BSD date on macOS) -------------
+
+if date -d @0 +%s >/dev/null 2>&1; then DATE_FLAVOR=gnu; else DATE_FLAVOR=bsd; fi
+
+# fmt_epoch EPOCH FORMAT
+fmt_epoch() {
+    if [[ $DATE_FLAVOR == gnu ]]; then date -d "@$1" +"$2"; else date -r "$1" +"$2"; fi
+}
+
+# to_epoch "YYYY-MM-DD HH:MM" [TIMEZONE]
+to_epoch() {
+    local tz="${2:-${TZ:-}}"
+    if [[ $DATE_FLAVOR == gnu ]]; then
+        TZ="$tz" date -d "$1" +%s 2>/dev/null
+    else
+        TZ="$tz" date -j -f '%Y-%m-%d %H:%M' "$1" +%s 2>/dev/null
+    fi
+}
+
+# --- Rendering ---------------------------------------------------------------
 
 # Percent used → colour: comfortable, getting close, nearly out.
 tone() {
@@ -53,16 +87,17 @@ render_row() {
     local filled_cells filled empty label_pad colour when until
 
     filled_cells=$(((percent * BAR_WIDTH + 50) / 100))
+    ((filled_cells > BAR_WIDTH)) && filled_cells=$BAR_WIDTH
     printf -v filled '%*s' "$filled_cells" ''
     printf -v empty '%*s' "$((BAR_WIDTH - filled_cells))" ''
     filled=${filled// /━}
     empty=${empty// /─}
-    # bash printf pads by bytes, so "·" would shift the bar; pad by characters instead.
+    # printf pads by bytes, so "·" would shift the bar; pad by characters instead.
     printf -v label_pad '%*s' "$((LABEL_WIDTH - ${#label}))" ''
 
     colour=$(tone "$percent")
     if [[ "$epoch" =~ ^[0-9]+$ ]]; then
-        when=$(date -d "@$epoch" +'%a %H:%M')
+        when=$(fmt_epoch "$epoch" '%a %H:%M')
         until="  ${DIM}in $(time_until "$epoch")${RESET}"
     else
         when="$epoch"
@@ -80,36 +115,80 @@ render_row() {
 # A row whose label is "note" is printed as a dim footnote instead of a bar.
 render_section() {
     local title="$1"
-    local label percent epoch
+    local label percent epoch rows=0
 
     printf '  %s%s%s\n' "$BOLD" "$title" "$RESET"
     while IFS=$'\t' read -r label percent epoch; do
         if [[ "$label" == "note" ]]; then
             printf '  %s%s%s\n' "$DIM" "$percent" "$RESET"
-        elif [[ -n "$label" ]]; then
+            rows=$((rows + 1))
+        elif [[ -n "$label" && "$percent" =~ ^[0-9]+$ ]]; then
             render_row "$label" "$percent" "$epoch"
+            rows=$((rows + 1))
         fi
     done
+    ((rows == 0)) && printf '  %sno data%s\n' "$DIM" "$RESET"
     printf '\n'
 }
 
-# "Sep 15, 9:30pm (Asia/Kolkata)" → epoch. Claude omits the year, so a reset that
-# lands past New Year parses into the past; bump it a year when that happens.
+note() {
+    printf 'note\t%s\n' "$1"
+}
+
+# --- Claude ------------------------------------------------------------------
+
+# Claude reset text → epoch. Handles "Nov 15 at 10:29pm (Asia/Calcutta)",
+# "Sep 15, 9:30pm (…)", "3pm (…)". Claude omits the year, so a reset that lands
+# past New Year parses into the past; bump it a year when that happens.
 claude_epoch() {
-    local raw="$1" epoch
-    raw=${raw%% (*}
-    raw=${raw//,/}
-    epoch=$(date -d "$raw" +%s 2>/dev/null) || { printf '%s' "$1"; return; }
-    ((epoch < $(date +%s) - 86400)) && epoch=$(date -d "$raw +1 year" +%s)
-    printf '%s' "$epoch"
+    local raw="$1" tz='' rest month='' day='' hour min ampm year now epoch
+    local re_tz='^(.*) \(([^)]+)\)$'
+    local re_date='^([A-Z][a-z]{2}) ([0-9]{1,2})[, ]+(at )?(.*)$'
+    local re_time='^([0-9]{1,2})(:([0-9]{2}))? ?([ap]m)$'
+
+    rest="$raw"
+    if [[ "$rest" =~ $re_tz ]]; then
+        rest="${BASH_REMATCH[1]}"
+        tz="${BASH_REMATCH[2]}"
+    fi
+    if [[ "$rest" =~ $re_date ]]; then
+        month="${BASH_REMATCH[1]}"
+        day="${BASH_REMATCH[2]}"
+        rest="${BASH_REMATCH[4]}"
+    fi
+    [[ "$rest" =~ $re_time ]] || { printf '%s' "$raw"; return; }
+    hour=$((10#${BASH_REMATCH[1]} % 12))
+    min="${BASH_REMATCH[3]:-00}"
+    ampm="${BASH_REMATCH[4]}"
+    [[ $ampm == pm ]] && hour=$((hour + 12))
+
+    now=$(date +%s)
+    year=$(TZ="$tz" date +%Y)
+    if [[ -n "$month" ]]; then
+        local months=" Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec " prefix
+        prefix="${months%% "$month" *}"
+        [[ "$prefix" == "$months" ]] && { printf '%s' "$raw"; return; }
+        local mm=$(((${#prefix} + 1) / 4 + 1))
+        epoch=$(to_epoch "$(printf '%04d-%02d-%02d %02d:%s' "$year" "$mm" "$((10#$day))" "$hour" "$min")" "$tz")
+        if [[ -n "$epoch" ]] && ((epoch < now - 86400)); then
+            epoch=$(to_epoch "$(printf '%04d-%02d-%02d %02d:%s' "$((year + 1))" "$mm" "$((10#$day))" "$hour" "$min")" "$tz")
+        fi
+    else
+        # Time only: today, or tomorrow if that time has already passed.
+        epoch=$(to_epoch "$(TZ="$tz" date +%Y-%m-%d) $(printf '%02d:%s' "$hour" "$min")" "$tz")
+        [[ -n "$epoch" ]] && ((epoch < now)) && epoch=$((epoch + 86400))
+    fi
+    printf '%s' "${epoch:-$raw}"
 }
 
 # Emits one TSV row per Claude limit window.
 fetch_claude() {
+    command -v claude >/dev/null || { note "claude not installed"; return; }
     local line label percent resets
     local limit='^Current (session|week.*): ([0-9]+)% used · resets (.+)$'
+    local week='^week \((.*)\)$'
 
-    claude -p "/usage" |
+    claude -p "/usage" 2>/dev/null |
         while IFS= read -r line; do
             [[ "$line" =~ $limit ]] || continue
             label="${BASH_REMATCH[1]}"
@@ -118,7 +197,7 @@ fetch_claude() {
 
             if [[ "$label" == "session" ]]; then
                 label="Session"
-            elif [[ "$label" =~ ^week\ \((.*)\)$ ]]; then
+            elif [[ "$label" =~ $week ]]; then
                 label="Week · ${BASH_REMATCH[1]}"
             fi
 
@@ -126,89 +205,110 @@ fetch_claude() {
         done
 }
 
+# --- Codex -------------------------------------------------------------------
+
 # Emits one TSV row per Codex limit window, via the app-server JSON-RPC API.
 fetch_codex() {
-    local line
+    command -v codex >/dev/null || { note "codex not installed"; return; }
+    local in="$WORK/codex.in" out="$WORK/codex.out" pid line
 
-    coproc CODEX { codex app-server 2>/dev/null; }
-    trap '[ -n "${CODEX_PID:-}" ] && kill "$CODEX_PID" 2>/dev/null' EXIT
+    mkfifo "$in" "$out" || return
+    codex app-server <"$in" >"$out" 2>/dev/null &
+    pid=$!
+    trap 'kill "$pid" 2>/dev/null' EXIT
+    trap 'exit 143' TERM
+    exec 7>"$in" 8<"$out"
 
-    send() {
-        printf '%s\n' "$1" >&"${CODEX[1]}"
-    }
-
-    send '{"method":"initialize","id":1,"params":{"clientInfo":{"name":"ai-status","version":"1.0"}}}'
-    while IFS= read -r -u "${CODEX[0]}" line; do
+    printf '%s\n' '{"method":"initialize","id":1,"params":{"clientInfo":{"name":"ai-status","version":"1.0"}}}' >&7
+    while IFS= read -r -t 20 -u 8 line; do
         jq -e '.id == 1' >/dev/null 2>&1 <<<"$line" && break
     done
 
-    send '{"method":"initialized"}'
-    send '{"method":"account/rateLimits/read","id":2}'
+    printf '%s\n' '{"method":"initialized"}' '{"method":"account/rateLimits/read","id":2}' >&7
 
-    while IFS= read -r -u "${CODEX[0]}" line; do
+    while IFS= read -r -t 20 -u 8 line; do
         jq -e '.id == 2' >/dev/null 2>&1 <<<"$line" || continue
         jq -r '
-          (.result.rateLimitsByLimitId.codex // .result.rateLimits) as $r |
-          [$r.primary, $r.secondary]
-          | map(select(. != null))
-          | .[]
-          | [
-              (if .windowDurationMins == 300 then "5h"
-               elif .windowDurationMins == 10080 then "Weekly"
-               else "\(.windowDurationMins)m" end),
-              (.usedPercent | tostring),
-              (.resetsAt // "unknown" | tostring)
-            ]
-          | @tsv
+          if .error then ["note", "codex: \(.error.message // "request failed")"] | @tsv
+          else
+            (.result.rateLimitsByLimitId.codex // .result.rateLimits) as $r |
+            [$r.primary, $r.secondary]
+            | map(select(. != null))
+            | .[]
+            | [
+                (if .windowDurationMins == 300 then "5h"
+                 elif .windowDurationMins == 10080 then "Weekly"
+                 else "\(.windowDurationMins)m" end),
+                (.usedPercent | round | tostring),
+                (.resetsAt // "unknown" | tostring)
+              ]
+            | @tsv
+          end
         ' <<<"$line"
         break
     done
+    exec 7>&- 8<&-
 }
 
-# Emits one TSV row per Cursor plan category. The CLI only exposes usage through the
-# interactive /usage panel, so drive it inside a throwaway tmux session and read the pane.
+# --- Cursor ------------------------------------------------------------------
+
+# The login cursor-agent saved: macOS Keychain, or auth.json on Linux.
+cursor_token() {
+    if [[ "$(uname -s)" == Darwin ]]; then
+        security find-generic-password -s cursor-access-token -w 2>/dev/null
+    else
+        jq -r '.accessToken // empty' "${XDG_CONFIG_HOME:-$HOME/.config}/cursor/auth.json" 2>/dev/null
+    fi
+}
+
+# Emits one TSV row per Cursor plan category, from the same service the
+# cursor-agent /usage panel reads.
 fetch_cursor() {
-    local session="$CURSOR_SESSION" pane line label percent resets tries
+    command -v cursor-agent >/dev/null || { note "cursor-agent not installed"; return; }
+    local token response
+    token=$(cursor_token)
+    [[ -n "$token" ]] || { note "not logged in: run cursor-agent login"; return; }
 
-    trap 'tmux -L ai-status kill-session -t "$session" 2>/dev/null' EXIT
+    # Token goes in via stdin so it never shows up in the process list.
+    response=$(printf 'Authorization: Bearer %s\n' "$token" |
+        curl -sS -m 15 -X POST \
+            'https://api2.cursor.sh/aiserver.v1.DashboardService/GetCurrentPeriodUsage' \
+            -H @- \
+            -H 'Content-Type: application/json' \
+            -H 'Connect-Protocol-Version: 1' \
+            -d '{}' 2>/dev/null)
+    token=''
+    [[ -n "$response" ]] || { note "cursor: no response (offline?)"; return; }
 
-    tmux -L ai-status new-session -d -s "$session" -x 100 -y 40 -c "$WORK" 'cursor-agent --trust' || return
-    sleep 6
-    tmux -L ai-status send-keys -t "$session" '/usage'
-    sleep 2
-    tmux -L ai-status send-keys -t "$session" Enter
-
-    for ((tries = 0; tries < 30; tries++)); do
-        sleep 1
-        # $$ is still the main script here; if it was SIGKILLed, nobody else will tidy up.
-        kill -0 "$$" 2>/dev/null || { rm -rf "$WORK"; return; }
-        pane=$(tmux -L ai-status capture-pane -t "$session" -p 2>/dev/null) || return
-        [[ "$pane" == *"Usage • "* ]] && break
-    done
-    [[ "$pane" == *"Usage • "* ]] || return
-
-    resets=$(sed -nE 's/.*Resets ([A-Za-z]+ [0-9]+).*/\1/p' <<<"$pane" | head -1)
-    while IFS= read -r line; do
-        if [[ "$line" =~ ^\ *(Included|Auto|API)\ +([0-9]+)%\ used ]]; then
-            label="${BASH_REMATCH[1]}"
-            percent="${BASH_REMATCH[2]}"
-            printf '%s\t%s\t%s\n' "$label" "$percent" "${resets:-unknown}"
-        elif [[ "$line" =~ ^\ *On-demand\ usage\ is\ (on|off) ]]; then
-            printf 'note\ton-demand usage %s\n' "${BASH_REMATCH[1]}"
-        fi
-    done <<<"$pane"
+    jq -r '
+      if .code then
+        if .code == "unauthenticated" then ["note", "login expired: open cursor-agent once to refresh it"]
+        else ["note", "cursor: \(.message // .code)"] end | @tsv
+      elif .planUsage then
+        ((.billingCycleEnd | tonumber) / 1000 | floor | tostring) as $reset |
+        .planUsage |
+        (["Included", (.totalPercentUsed // 0 | round | tostring), $reset],
+         ["Auto",     (.autoPercentUsed  // 0 | round | tostring), $reset],
+         ["API",      (.apiPercentUsed   // 0 | round | tostring), $reset]) | @tsv
+      else ["note", "cursor: unexpected response"] | @tsv
+      end
+    ' <<<"$response" 2>/dev/null ||
+        note "cursor: unreadable response"
 }
 
-# Everything a run creates lives under one temp dir and one named tmux session, so
-# cleanup is the same whether the run finishes, is interrupted, or is killed.
-WORK=$(mktemp -d -t "ai-status.$$.XXXXXX")
-CURSOR_SESSION="ai-status-$$"
+# --- Main --------------------------------------------------------------------
+
+# Everything a run creates lives under one temp dir, so cleanup is the same
+# whether the run finishes, is interrupted, or is killed.
+TMP_ROOT="${TMPDIR:-/tmp}"
+TMP_ROOT="${TMP_ROOT%/}"
+WORK=$(mktemp -d "$TMP_ROOT/ai-status.$$.XXXXXX") || exit 1
 
 cleanup() {
-    # A second signal mid-cleanup (watch dying sends HUP right after INT) must not cut this short.
+    # A second signal mid-cleanup must not cut this short.
     trap '' HUP INT TERM
-    tmux -L ai-status kill-session -t "$CURSOR_SESSION" 2>/dev/null
     kill $(jobs -p) 2>/dev/null
+    wait 2>/dev/null
     rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -216,15 +316,13 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-# A SIGKILLed run can't clean up; its session and work dir carry its pid, so reap them here.
-while IFS= read -r stale; do
-    [[ "$stale" =~ ^ai-status-([0-9]+)$ ]] || continue
-    kill -0 "${BASH_REMATCH[1]}" 2>/dev/null || tmux -L ai-status kill-session -t "$stale" 2>/dev/null
-done < <(tmux -L ai-status list-sessions -F '#S' 2>/dev/null)
-for stale in "${TMPDIR:-/tmp}"/ai-status.*.*; do
+# A SIGKILLed run can't clean up; its work dir carries its pid, so reap it here.
+for stale in "$TMP_ROOT"/ai-status.*.*; do
     [[ "$stale" =~ /ai-status\.([0-9]+)\.[^/]+$ ]] || continue
     kill -0 "${BASH_REMATCH[1]}" 2>/dev/null || rm -rf "$stale"
 done
+
+command -v jq >/dev/null || { echo "ai-status needs jq" >&2; exit 1; }
 
 # Each fetch takes a few seconds, so run them side by side and print once all are in.
 fetch_claude >"$WORK/claude" &

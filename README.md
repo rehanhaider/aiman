@@ -27,17 +27,16 @@ One screen for the rate limits of all three agents, refreshed every five minutes
 ln -s ~/Projects/aiman/scripts/ai-status ~/.local/bin/ai-status
 ```
 
-Each section comes from the tool's own CLI, so it needs `claude`, `codex` and
-`cursor-agent` logged in:
+It runs on Linux and macOS with bash 3.2 or later. Each section needs its tool
+installed and logged in. A section whose CLI is missing prints a note instead:
 
 - **Claude** — `claude -p /usage`.
 - **Codex** — `codex app-server`, asked for `account/rateLimits/read` over JSON-RPC.
-- **Cursor** — the CLI only reports usage in its interactive `/usage` panel, so the
-  script opens `cursor-agent` in a detached `tmux` session, types `/usage`, reads the
-  pane, and kills the session. This is the one section that requires `tmux`; without
-  it the Cursor block prints its title and nothing else.
+- **Cursor** — `cursor-agent` must be logged in. The script reads its saved token
+  (from the macOS Keychain, or `~/.config/cursor/auth.json` on Linux) and asks
+  Cursor's usage service directly, the same one the `/usage` panel reads.
 
-Also needs `jq` and GNU `date`.
+Also needs `curl` and `jq`.
 
 ## Install the CLI once
 
