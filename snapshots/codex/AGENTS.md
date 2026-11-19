@@ -4,20 +4,15 @@ Do not decide what "done", "allowed", or "correct" means during the task. Those 
 
 ## Operating contract
 
-1. Invoke the unslop skill before every reply to the user, and write every reply by its rules.
-2. When the user asks for an explanation, use ASD-STE100 language and include a worked example. Show structure as the Diagrams section says.
-3. When asked what is next, recommend one item. Do not return a menu unless asked.
-4. Treat the documented source of truth as authoritative. Separate: documented contract; current implementation; open decision; your proposal.
-5. Do not add a dependency, feature flag, service, architecture layer, compatibility path, migration, or workflow that the request did not name. If you think one is needed, ask first.
-6. Do not install software, open a PR, push, merge, deploy, delete, reset, or modify external state unless the request or named workflow authorizes that exact action.
-7. Use the repository commands and skills. Do not replace them with direct package, build, Gradle, browser, or GitHub commands without a verified reason.
-8. Do not stop at an intermediate state. Continue until the stated terminal condition is reached or a real blocker requires a user decision.
-9. Before claiming completion, verify the result through the requested interface: tests, browser, emulator, screenshot, deployed system, or exact PR head.
-10. Preserve unrelated changes. Inspect repository state before editing or cleaning.
-11. Every user correction becomes an active constraint for the rest of the task. Re-check current work for the same violation immediately.
-12. After compaction, model switching, or handoff, reconstruct the active constraints and terminal condition before continuing.
-13. Ask a question only when the missing answer would materially change scope, architecture, cost, security, or external state.
-14. NEVER provide time estimates unless explicitly requested.
+1. Treat the documented source of truth as authoritative. Separate: documented contract; current implementation; open decision; your proposal.
+2. Do not add a dependency, feature flag, service, architecture layer, compatibility path, migration, or workflow that the request did not name. If you think one is needed, ask first.
+3. Do not install software, open a PR, push, merge, deploy, delete, reset, or modify external state unless the request or named workflow authorizes that exact action.
+4. Use the repository commands and skills. Do not replace them with direct package, build, Gradle, browser, or GitHub commands without a verified reason.
+5. Do not stop at an intermediate state. Continue until the stated terminal condition is reached or a real blocker requires a user decision.
+6. Before claiming completion, verify the result through the requested interface: tests, browser, emulator, screenshot, deployed system, or exact PR head.
+7. Preserve unrelated changes. Inspect repository state before editing or cleaning.
+8. Every user correction becomes an active constraint for the rest of the task. Re-check current work for the same violation immediately.
+9. After compaction, model switching, or handoff, reconstruct the active constraints and terminal condition before continuing.
 
 ## Scope
 
@@ -38,10 +33,6 @@ Do not decide what "done", "allowed", or "correct" means during the task. Those 
 - Do not call UI work complete from code inspection alone. Before completion: open the actual page or app; check the relevant viewport and theme; compare it with the named reference; check spacing, contrast, typography, copy, and interaction states; capture a screenshot or describe the observed result; fix visible regressions before reporting completion.
 - A build or unit test does not prove the live workflow. Run the requested live path with the requested environment and credentials. Do not substitute mocks, local-only checks, or a different interface.
 - Do not infer that a PR is clean from silence, old reviews, or zero visible threads. Check the exact head, current review threads, recent comments, and required checks.
-
-## Verdicts
-
-- Any verdict (ready, correct, spec-compliant, verified) must quote the exact doc section checked, read in this session. Never assert a requirement without quoting its source. Say "I believe" vs "I verified" accurately.
 
 ## Action permissions
 
@@ -93,32 +84,11 @@ Handle one decision at a time. For each decision provide:
 
 Do not introduce a new decision while resolving the current one.
 
-## When I correct you
+## Standing constraints
 
-1. Restate the correction in one sentence.
-2. Add it to the active constraint list.
-3. Check whether the current work violates it elsewhere.
-4. Correct every existing occurrence.
-5. Do not require me to repeat the correction.
-
-Standing constraints already given:
 - Do not add Claude or AI attribution to commits.
 - Do not open a PR until explicitly requested.
 
-## Communication
-
-- Start the response with the answer or recommendation. Keep the answer to 5 lines or fewer. Put more detail below a `---`.
-- Use plain language. Do not restate the question.
-- Do not provide more than one recommendation unless alternatives were requested. If you write "the tradeoffs are" — stop. Pick one, state it in one line, then justify.
-- Never use a proper noun you haven't defined in the same message.
-- Define necessary technical terms when first used.
-- Keep the main answer under 250 words unless detail was requested. Put supporting analysis after the answer.
-- If the user says the answer is unclear, restart from the concrete scenario. Do not paraphrase the same abstraction.
-
-## Diagrams
-- If an answer has structure (a flow, parts, a layout, a sequence, or before/after), explain it with a diagram, not paragraphs. Keep text to labels and a few lines.
-- Never make the user open a file, a URL or a browser to see a diagram. On a remote host, never launch a window.
-- Never draw ASCII art or draw mermaid diagrams unless explicitly requested.
 
 ## Model steering
 
